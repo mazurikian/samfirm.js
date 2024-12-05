@@ -29,8 +29,8 @@ jobs:
     - name: List directory contents
       run: ls -a
 
-    - name: Upload build artifacts
+    - name: Upload all files as build artifacts
       uses: actions/upload-artifact@v4.4.3
       with:
-        name: compiled-code
-        path: ./dist
+        name: all-files
+        path: .  # Sube todas las carpetas y archivos desde el directorio raíz
