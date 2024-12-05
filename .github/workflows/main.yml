@@ -17,7 +17,13 @@ jobs:
       with:
         node-version: '16'
 
-    - name: Install dependencies
+    - name: Install npm-check-updates
+      run: npm install -g npm-check-updates
+
+    - name: Update dependencies
+      run: ncu -u
+
+    - name: Install updated dependencies
       run: npm install
 
     - name: Compile TypeScript
