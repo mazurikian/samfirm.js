@@ -15,7 +15,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4.1.0
       with:
-        node-version: '20'
+        node-version: '16'
 
     - name: Install updated dependencies
       run: npm install
@@ -23,8 +23,8 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-  ##  - name: Run Node.js script
-    ##  run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
+    - name: Run Node.js script
+      run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
 
     - name: List directory contents
       run: ls -a
