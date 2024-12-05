@@ -41,7 +41,7 @@
     "axios": "^0.21.0",
     "cli-progress": "^3.8.2",
     "eslint": "^7.13.0",
-    "eslint-config-prettier": "^6.15.0",
+    "eslint-config-prettier": "^9.1.0",
     "fast-xml-parser": "^3.17.4",
     "prettier": "^3.4.2",
     "ts-node-dev": "^1.0.0",
