@@ -34,7 +34,7 @@
   "devDependencies": {
     "@types/cli-progress": "^3.8.0",
     "@types/node": "^22.10.1",
-    "@types/yargs": "^15.0.9",
+    "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^4.6.1",
     "@typescript-eslint/parser": "^4.6.1",
     "@vercel/ncc": "^0.25.1",
