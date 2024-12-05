@@ -37,7 +37,7 @@
     "@types/yargs": "^15.0.9",
     "@typescript-eslint/eslint-plugin": "^4.6.1",
     "@typescript-eslint/parser": "^4.6.1",
-    "@vercel/ncc": "^0.25.1",
+    "@vercel/ncc": "^0.38.3",
     "axios": "^0.21.0",
     "cli-progress": "^3.8.2",
     "eslint": "^7.13.0",
