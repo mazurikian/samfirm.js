@@ -15,14 +15,39 @@ jobs:
         node-version: [18.x, 20.x, 22.x]
 
     steps:
-    - uses: actions/checkout@v4
+      # Checkout the repository
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
+      # Setup Node.js environment
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
 
-    - name: Build
-      run: |
-        npm install
-        grunt
+      # Cache node modules for faster builds
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Audit and fix vulnerabilities
+      - name: Audit and Fix Vulnerabilities
+        run: |
+          npm audit fix
+          # To force fix (may introduce breaking changes), uncomment the next line:
+          # npm audit fix --force
+
+      # Optionally, check for funding
+      - name: Check Funding
+        run: npm fund
+
+      # Run Grunt using the local installation via npx
+      - name: Run Grunt
+        run: npx grunt
