@@ -23,8 +23,8 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    - name: Run Node.js script
-      run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
+  ##  - name: Run Node.js script
+    ##  run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
 
     - name: List directory contents
       run: ls -a
