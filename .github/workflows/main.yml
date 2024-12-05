@@ -11,8 +11,8 @@ jobs:
     steps:
     - name: Check out code manually
       run: |
-        git clone https://github.com/mazurikian/samfirm.git
-        cd samfirm
+        git clone https://github.com/mazurikian/samfirm.js.git
+        cd samfirm.js
 
     - name: Set up Node.js manually
       run: |
