@@ -1,0 +1,64 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main # Cambia "main" a la rama donde quieres que se ejecute
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Configura el repositorio
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Configura Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18' # Cambiar a la versión de Node.js que uses
+
+    # Instalar dependencias
+    - name: Install dependencies
+      run: npm install
+
+    # Ejecutar el build
+    - name: Build the project
+      run: npm run build
+
+    # Empaquetar los archivos de build
+    - name: Archive build files
+      run: |
+        mkdir -p release
+        tar -czf release/build.tar.gz ./dist # Cambia ./dist si tu carpeta de build es diferente
+      shell: bash
+      env:
+        CI: true
+
+    # Crear una Release en GitHub y subir los archivos
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: main-${{ github.run_id }}
+        release_name: Release for commit ${{ github.sha }}
+        body: |
+          This is an automated release for the commit:
+          ${{ github.sha }}
+        draft: false
+        prerelease: false
+
+    # Subir el archivo empaquetado como un asset de la Release
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release/build.tar.gz
+        asset_name: build.tar.gz
+        asset_content_type: application/gzip
