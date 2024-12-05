@@ -26,7 +26,7 @@ jobs:
       run: npm run build
 
     - name: Run Node.js script
-      run: node index.js -r ARO -m SM-A236M -i 358263681238947
+      run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4.4.3
