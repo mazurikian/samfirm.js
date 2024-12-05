@@ -1,5 +1,3 @@
-name: Build and Compile
-
 on:
   push:
     branches: [ "main" ]
@@ -28,8 +26,11 @@ jobs:
     - name: Run Node.js script
       run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
 
+    - name: List directory contents
+      run: ls -a
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4.4.3
       with:
         name: compiled-code
-        path: ./dist/**/*  # Asegúrate de especificar los archivos generados después de ejecutar el script
+        path: ./dist
