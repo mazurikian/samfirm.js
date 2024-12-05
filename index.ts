@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import cliProgress from "cli-progress";
 import crypto from "crypto";
 import fs from "fs";
@@ -8,7 +8,6 @@ import { parse as xmlParse } from "fast-xml-parser";
 import path from "path";
 import unzip from "unzip-stream";
 import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
 
 import { handleAuthRotation } from "./utils/authUtils";
 import {
@@ -18,162 +17,159 @@ import {
 } from "./utils/msgUtils";
 import { version as packageVersion } from "./package.json";
 
-// Configuración constante
-const BASE_URL = "https://neofussvr.sslcs.cdngc.net";
-const USER_AGENT = "Kies2.0_FUS";
-const DEFAULT_HEADERS = {
-  "User-Agent": USER_AGENT,
-  Accept: "application/xml",
-};
+// ================= FUNCIONES AUXILIARES =================
 
-// Función para obtener la última versión del firmware
-async function fetchLatestFirmwareVersion(region, model) {
+// Obtener la última versión del firmware
+const getLatestVersion = async (region, model) => {
   try {
     const response = await axios.get(
       `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`
     );
-    const versionData = xmlParse(response.data).versioninfo.firmware.version
-      .latest;
-    const [pda, csc, modem] = versionData.split("/");
+    const [pda, csc, modem] = xmlParse(response.data).versioninfo.firmware.version.latest.split("/");
     return { pda, csc, modem };
   } catch (error) {
-    throw new Error("Error al obtener la última versión del firmware.");
+    throw new Error(`Error al obtener la última versión: ${error.message}`);
   }
-}
+};
 
-// Función para manejar encabezados de autenticación
-function updateHeaders(headers, responseHeaders, nonce) {
+// Manejar encabezados para rotación de autenticación y cookies
+const processHeaders = (responseHeaders, headers, nonce) => {
   if (responseHeaders.nonce) {
-    const authData = handleAuthRotation(responseHeaders);
-    Object.assign(nonce, authData.nonce);
-    headers.Authorization = authData.Authorization;
+    const { Authorization, nonce: newNonce } = handleAuthRotation(responseHeaders);
+    Object.assign(nonce, newNonce);
+    headers.Authorization = Authorization;
   }
 
   const sessionID = responseHeaders["set-cookie"]
     ?.find((cookie) => cookie.startsWith("JSESSIONID"))
     ?.split(";")[0];
+
   if (sessionID) {
     headers.Cookie = sessionID;
   }
-}
+};
 
-// Función para obtener metadatos del binario
-async function fetchBinaryMetadata(region, model, imei, nonce, headers, versionInfo) {
-  const { pda, csc, modem } = versionInfo;
-  const payload = getBinaryInformMsg(
-    `${pda}/${csc}/${modem || pda}/${pda}`,
-    region,
-    model,
-    imei,
-    nonce.decrypted
-  );
-
+// Realizar solicitud HTTP con manejo de encabezados
+const makeRequest = async (url, data, headers, processResponseHeaders) => {
   try {
-    const response = await axios.post(
-      `${BASE_URL}/NF_DownloadBinaryInform.do`,
-      payload,
-      {
-        headers: {
-          ...headers,
-          "Content-Type": "application/xml",
-        },
-      }
-    );
-
-    updateHeaders(headers, response.headers, nonce);
-
-    const parsedInfo = xmlParse(response.data);
-    return {
-      binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
-      binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
-      binaryFilename: parsedInfo.FUSMsg.FUSBody.Put.BINARY_NAME.Data,
-      binaryLogicValue: parsedInfo.FUSMsg.FUSBody.Put.LOGIC_VALUE_FACTORY.Data,
-      binaryModelPath: parsedInfo.FUSMsg.FUSBody.Put.MODEL_PATH.Data,
-      binaryOSVersion: parsedInfo.FUSMsg.FUSBody.Put.CURRENT_OS_VERSION.Data,
-      binaryVersion: parsedInfo.FUSMsg.FUSBody.Results.LATEST_FW_VERSION.Data,
-    };
+    const response = await axios.post(url, data, { headers });
+    if (processResponseHeaders) processResponseHeaders(response.headers);
+    return response;
   } catch (error) {
-    throw new Error("Error al obtener metadatos del binario.");
+    throw new Error(`Error en la solicitud a ${url}: ${error.message}`);
   }
-}
+};
 
-// Función para manejar la descarga del firmware
-async function downloadAndDecryptFirmware(metadata, headers, nonce, outputFolder) {
-  const decryptionKey = getDecryptionKey(metadata.binaryVersion, metadata.binaryLogicValue);
-  const binaryDecipher = crypto.createDecipheriv("aes-128-ecb", decryptionKey, null);
-
+// Descargar y descifrar el archivo binario
+const downloadAndDecryptBinary = async (
+  url,
+  binaryDecipher,
+  binaryByteSize,
+  outputFolder
+) => {
   try {
-    const response = await axios.get(
-      `${BASE_URL}/NF_DownloadBinaryForMass.do?file=${metadata.binaryModelPath}${metadata.binaryFilename}`,
-      { headers, responseType: "stream" }
-    );
-
-    fs.mkdirSync(outputFolder, { recursive: true });
-
-    let downloadedSize = 0;
-    let currentFile = "";
     const progressBar = new cliProgress.SingleBar({
-      format: "{bar} {percentage}% | {value}/{total} bytes | {file}",
+      format: "{bar} {percentage}% | {value}/{total} | {file}",
       barCompleteChar: "\u2588",
       barIncompleteChar: "\u2591",
     });
 
-    progressBar.start(metadata.binaryByteSize, downloadedSize);
+    let downloadedSize = 0;
+    let currentFile = "";
+
+    const response = await axios.get(url, {
+      responseType: "stream",
+    });
+
+    fs.mkdirSync(outputFolder, { recursive: true });
+    progressBar.start(binaryByteSize, downloadedSize);
 
     response.data
-      .on("data", (buffer) => {
-        downloadedSize += buffer.length;
+      .on("data", (chunk) => {
+        downloadedSize += chunk.length;
         progressBar.update(downloadedSize, { file: currentFile });
       })
       .pipe(binaryDecipher)
       .pipe(unzip.Parse())
       .on("entry", (entry) => {
-        currentFile = entry.path.length > 18 ? `${entry.path.slice(0, 18)}...` : entry.path;
-        progressBar.update(downloadedSize, { file: currentFile });
+        currentFile = `${entry.path.slice(0, 18)}...`;
         entry.pipe(fs.createWriteStream(path.join(outputFolder, entry.path)));
       })
       .on("finish", () => {
         progressBar.stop();
-        console.log("Descarga y extracción completadas.");
+        console.log("Descarga y descifrado completados.");
       });
   } catch (error) {
-    throw new Error("Error durante la descarga o desencriptación del firmware.");
+    throw new Error(`Error durante la descarga o descifrado: ${error.message}`);
   }
-}
+};
 
-// Flujo principal
-async function main(region, model, imei) {
-  console.log(`Modelo: ${model}, Región: ${region}, IMEI: ${imei}`);
+// ================= FUNCIÓN PRINCIPAL =================
+const main = async (region, model, imei) => {
   try {
-    const versionInfo = await fetchLatestFirmwareVersion(region, model);
-    console.log("Última versión obtenida:", versionInfo);
+    console.log(`\nModelo: ${model}\nRegión: ${region}\nIMEI: ${imei}\n`);
+
+    const { pda, csc, modem } = await getLatestVersion(region, model);
+    console.log(`\nÚltima versión:\n  PDA: ${pda}\n  CSC: ${csc}\n  MODEM: ${modem || "N/A"}`);
 
     const nonce = { encrypted: "", decrypted: "" };
-    const headers = { ...DEFAULT_HEADERS, Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"' };
+    const headers = { "User-Agent": "Kies2.0_FUS" };
 
-    // Inicialización de sesión
-    await axios.post(`${BASE_URL}/NF_DownloadGenerateNonce.do`, "", { headers })
-      .then((res) => updateHeaders(headers, res.headers, nonce));
+    // Solicitar Nonce
+    await makeRequest(
+      "https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do",
+      "",
+      {
+        Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
+        "User-Agent": "Kies2.0_FUS",
+        Accept: "application/xml",
+      },
+      (resHeaders) => processHeaders(resHeaders, headers, nonce)
+    );
 
-    const metadata = await fetchBinaryMetadata(region, model, imei, nonce, headers, versionInfo);
+    // Obtener información binaria
+    const binaryInfo = await makeRequest(
+      "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do",
+      getBinaryInformMsg(`${pda}/${csc}/${modem || pda}/${pda}`, region, model, imei, nonce.decrypted),
+      {
+        ...headers,
+        Accept: "application/xml",
+        "Content-Type": "application/xml",
+      },
+      (resHeaders) => processHeaders(resHeaders, headers, nonce)
+    ).then((res) => xmlParse(res.data).FUSMsg.FUSBody.Put);
 
-    console.log("Metadatos del binario obtenidos:", metadata);
+    console.log(`\nOS: ${binaryInfo.CURRENT_OS_VERSION.Data}\nTamaño: ${binaryInfo.BINARY_BYTE_SIZE.Data} bytes`);
 
-    const outputFolder = path.join(process.cwd(), `${model}_${region}`);
-    await downloadAndDecryptFirmware(metadata, headers, nonce, outputFolder);
+    const decryptionKey = getDecryptionKey(
+      binaryInfo.LATEST_FW_VERSION.Data,
+      binaryInfo.LOGIC_VALUE_FACTORY.Data
+    );
+
+    // Descargar y descifrar
+    const binaryDecipher = crypto.createDecipheriv("aes-128-ecb", decryptionKey, null);
+    const outputFolder = `${process.cwd()}/${model}_${region}/`;
+
+    await downloadAndDecryptBinary(
+      `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.MODEL_PATH.Data}${binaryInfo.BINARY_NAME.Data}`,
+      binaryDecipher,
+      parseInt(binaryInfo.BINARY_BYTE_SIZE.Data),
+      outputFolder
+    );
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error(`Error: ${error.message}`);
   }
-}
+};
 
-// Manejo de CLI con yargs
-const argv = yargs(hideBin(process.argv))
-  .option("model", { alias: "m", describe: "Modelo del dispositivo", type: "string", demandOption: true })
+// ================= CONFIGURACIÓN CLI =================
+const { argv } = yargs
+  .option("model", { alias: "m", describe: "Modelo", type: "string", demandOption: true })
   .option("region", { alias: "r", describe: "Región", type: "string", demandOption: true })
-  .option("imei", { alias: "i", describe: "IMEI o número de serie", type: "string", demandOption: true })
+  .option("imei", { alias: "i", describe: "IMEI/Serial Number", type: "string", demandOption: true })
   .version(packageVersion)
   .alias("v", "version")
-  .help()
-  .argv;
+  .help();
 
 main(argv.region, argv.model, argv.imei);
+
+export {};
