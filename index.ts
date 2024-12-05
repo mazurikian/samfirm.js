@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Importación de módulos y utilidades necesarias
 import axios, { AxiosResponse } from "axios";
 import cliProgress from "cli-progress";
 import crypto from "crypto";
@@ -9,6 +10,7 @@ import path from "path";
 import unzip from "unzip-stream";
 import yargs from "yargs";
 
+// Importación de utilidades personalizadas y datos del paquete
 import { handleAuthRotation } from "./utils/authUtils";
 import {
   getBinaryInformMsg,
@@ -17,6 +19,7 @@ import {
 } from "./utils/msgUtils";
 import { version as packageVersion } from "./package.json";
 
+// Función para obtener la última versión de firmware disponible
 const getLatestVersion = async (
   region: string,
   model: string
@@ -26,6 +29,7 @@ const getLatestVersion = async (
       `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`
     )
     .then((res: AxiosResponse) => {
+      // Parseo del XML para extraer las versiones PDA, CSC y MODEM
       const [pda, csc, modem] = xmlParse(
         res.data
       ).versioninfo.firmware.version.latest.split("/");
@@ -34,29 +38,28 @@ const getLatestVersion = async (
     });
 };
 
+// Función principal que coordina el flujo del programa
 const main = async (region: string, model: string, imei: string): Promise<void> => {
   console.log(`
   Model: ${model}
   Region: ${region}
   IMEI: ${imei}`);
 
+  // Obtener la última versión de firmware
   const { pda, csc, modem } = await getLatestVersion(region, model);
-
   console.log(`
   Latest version:
     PDA: ${pda}
     CSC: ${csc}
     MODEM: ${modem !== "" ? modem : "N/A"}`);
 
-  const nonce = {
-    encrypted: "",
-    decrypted: "",
-  };
-
+  // Configuración inicial de cabeceras y nonce
+  const nonce = { encrypted: "", decrypted: "" };
   const headers: Record<string, string> = {
     "User-Agent": "Kies2.0_FUS",
   };
 
+  // Función para manejar las cabeceras y actualizar el nonce o sesión
   const handleHeaders = (responseHeaders: any) => {
     if (responseHeaders.nonce != null) {
       const { Authorization, nonce: newNonce } = handleAuthRotation(
@@ -76,6 +79,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     }
   };
 
+  // Generar un nonce para la autenticación
   await axios
     .post("https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do", "", {
       headers: {
@@ -90,6 +94,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
       return res;
     });
 
+  // Solicitar información del binario de firmware
   const {
     binaryByteSize,
     binaryDescription,
@@ -105,7 +110,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
         `${pda}/${csc}/${modem !== "" ? modem : pda}/${pda}`,
         region,
         model,
-		imei,
+        imei,
         nonce.decrypted
       ),
       {
@@ -123,6 +128,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     .then((res: AxiosResponse) => {
       const parsedInfo = xmlParse(res.data);
 
+      // Extraer información del binario desde el XML
       return {
         binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
         binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
@@ -143,8 +149,10 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
   Description:
     ${binaryDescription.split("\n").join("\n    ")}`);
 
+  // Generar la clave de desencriptación para el binario
   const decryptionKey = getDecryptionKey(binaryVersion, binaryLogicValue);
 
+  // Inicializar la descarga del binario
   await axios
     .post(
       "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do",
@@ -162,12 +170,14 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
       return res;
     });
 
+  // Crear un flujo para desencriptar y descomprimir el archivo
   const binaryDecipher = crypto.createDecipheriv(
     "aes-128-ecb",
     decryptionKey,
     null
   );
 
+  // Descargar y procesar el binario
   await axios
     .get(
       `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryModelPath}${binaryFilename}`,
@@ -212,6 +222,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     });
 };
 
+// Configuración de argumentos CLI con Yargs
 const { argv } = yargs
   .option("model", {
     alias: "m",
@@ -235,6 +246,7 @@ const { argv } = yargs
   .alias("v", "version")
   .help();
 
+// Ejecutar la función principal con los argumentos proporcionados
 main(argv.region, argv.model, argv.imei);
 
 export {};
