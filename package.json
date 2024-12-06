@@ -4,9 +4,7 @@
   "description": "A streaming downloader, decryptor and extractor of Samsung firmware",
   "scripts": {
     "build": "ncc build index.ts -m -t",
-    "check-source-formatting": "prettier -c .",
-    "check-types": "tsc --noEmit",
-    "format-source": "prettier -w ."
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",
@@ -18,7 +16,6 @@
     "axios": "^1.7.9",
     "cli-progress": "^3.8.2",
     "fast-xml-parser": "^3.21.1",
-    "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "unzip-stream": "^0.3.4",
     "yargs": "^17.7.2"
