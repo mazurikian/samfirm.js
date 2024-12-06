@@ -9,6 +9,7 @@
     "axios": "^1.7.9",
     "cli-progress": "^3.8.2",
     "fast-xml-parser": "^3.21.1",
+    "tar": "^7.4.3",
     "unzip-stream": "^0.3.4",
     "yargs": "^17.7.2"
   },
