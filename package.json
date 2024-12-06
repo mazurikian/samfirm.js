@@ -26,7 +26,7 @@
     "build": "ncc build index.ts -m -t",
     "check-source-formatting": "prettier -c .",
     "check-types": "tsc --noEmit",
-    "format-source": "prettier -w .",
+    "format-source": "prettier -w ."
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",
