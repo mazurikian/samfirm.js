@@ -28,21 +28,28 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    # Paso 5: Crear un tag para el release
-    - name: Create a tag
-      id: create_tag
+    # Paso 7: Crear un release en GitHub
+    - name: Create Release on GitHub
+      id: create_release
       run: |
-        # Define el nombre del tag (puede ser un número de versión o commit hash)
-        TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
-        echo "Tag name: $TAG_NAME"
-        git tag $TAG_NAME
-        git push origin $TAG_NAME
+        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+        VERSION="v$(date +'%Y%m%d%H%M%S')"  # Crea una versión con la fecha y hora actual.
+        RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
+        echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
-    # Paso 6: Crear un release en GitHub con los archivos index.js
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          $(find . -name 'index.js')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # Paso 8: Subir los artefactos de la compilación al release
+    - name: Upload build artifacts to GitHub Release
+      run: |
+        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+        RELEASE_ID=${{ steps.create_release.outputs.release_id }}
+        FILE_PATH="./utils/"  # Directorio donde se encuentran los artefactos de la compilación.
+        
+        # Subir archivo comprimido de los artefactos
+        tar -czvf syndical-release.tar.gz -C ./utils/ .
+        
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @syndical-release.tar.gz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=syndical-release.tar.gz"
