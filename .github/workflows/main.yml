@@ -28,17 +28,17 @@ jobs:
     - name: Compile TypeScript
       run: npm run build && cd dist/ && ls -a
 
-    # Paso 5: Crear un tag y subir el release con la acción 'gh release' de softprop
+    # Paso 5: Crear un tag antes de crear el release
+    - name: Create a new tag
+      run: |
+        VERSION=$(date +'%Y%m%d%H%M%S') # Usar la fecha y hora como tag
+        git tag $VERSION
+        git push origin $VERSION
+
+    # Paso 6: Crear el release con el tag
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: dist/index.js # Aquí especificamos el archivo que queremos incluir en el release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Se usa el token de GitHub para autenticar el release
-
-    # Paso 6: Crear un tag automáticamente
-    - name: Create a new tag
-      run: |
-        VERSION=$(date +'%Y%m%d%H%M%S') # Usar la fecha y hora como tag
-        git tag $VERSION
-        git push origin $VERSION
