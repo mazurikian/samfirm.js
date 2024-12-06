@@ -6,38 +6,31 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-    - name: Check out code manually
-      run: |
-        git clone https://github.com/mazurikian/samfirm.js.git
-        cd samfirm.js
+    - name: Check out code
+      uses: actions/checkout@v4.2.2
 
-    - name: Set up Node.js manually
-      run: |
-        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-        node -v
-        npm -v
-        sudo apt install tree -y && tree
-        cd samfirm.js
-        ls -a
-        npm i
+    - name: Set up Node.js
+      uses: actions/setup-node@v4.1.0
+      with:
+        node-version: 'latest'
 
     - name: Install updated dependencies
-      run: |
-        npm install
+      run: npm install
 
     - name: Compile TypeScript
-      run: |
-        npm run build
+      run: npm run build
 
     - name: Run Node.js script
-      run: |
-        node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
+      run: node ./dist/index.js -r ARO -m SM-A236M -i 358263681238947
 
     - name: List directory contents
-      run: |
-        sudo apt install tree -y
-        tree
+      run: sudo apt install tree && tree
+
+#    - name: Upload all files as build artifacts
+#      uses: actions/upload-artifact@v4.4.3
+#      with:
+#        name: all-files
+#        path: .  # Sube todas las carpetas y archivos desde el directorio raíz
