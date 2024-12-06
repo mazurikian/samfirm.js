@@ -1,4 +1,4 @@
-# SamFirm.js
+# SamFirm
 
 A streaming downloader, decryptor and extractor of Samsung firmware.
 
