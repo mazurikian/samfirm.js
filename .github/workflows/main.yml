@@ -20,8 +20,7 @@ jobs:
         sudo apt-get install -y nodejs
         node -v
         npm -v
-        ls -a
-        cd samfirm.js
+        sudo apt install tree -y && tree
 
     - name: Install updated dependencies
       run: |
