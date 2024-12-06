@@ -28,7 +28,7 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    # Paso 7: Crear un release en GitHub
+    # Paso 5: Crear un release en GitHub
     - name: Create Release on GitHub
       id: create_release
       run: |
@@ -39,17 +39,27 @@ jobs:
           https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
         echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
-    # Paso 8: Subir los artefactos de la compilación al release
-    - name: Upload build artifacts to GitHub Release
+    # Paso 6: Buscar y comprimir los archivos index.js
+    - name: Find and compress index.js files
+      run: |
+        # Buscar todos los archivos llamados index.js
+        INDEX_FILES=$(find . -type f -name "index.js")
+        
+        if [ -z "$INDEX_FILES" ]; then
+          echo "No index.js files found."
+          exit 1
+        fi
+
+        # Crear un archivo comprimido con todos los index.js encontrados
+        tar -czvf index-files.tar.gz $INDEX_FILES
+
+    # Paso 7: Subir los artefactos al release de GitHub
+    - name: Upload index.js files to GitHub Release
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="dist/"  # Directorio donde se encuentran los artefactos de la compilación.
-        
-        # Subir archivo comprimido de los artefactos
-        tar -czvf syndical-release.tar.gz -C dist/ .
         
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
-          --data-binary @syndical-release.tar.gz \
-          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=syndical-release.tar.gz"
+          --data-binary @index-files.tar.gz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=index-files.tar.gz"
