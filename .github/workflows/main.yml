@@ -38,11 +38,11 @@ jobs:
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="./utils/"
+        FILE_PATH="./dist/index.js"
         
-        tar -czvf syndical-release.tar.gz -C ./utils/ .
+        tar -czvf samfirm.tar.gz -C ./dist/index.js .
         
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
-          --data-binary @syndical-release.tar.gz \
-          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=syndical-release.tar.gz"
+          --data-binary @samfirm.tar.gz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.gz"
