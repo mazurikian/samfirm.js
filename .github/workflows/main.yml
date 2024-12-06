@@ -24,33 +24,11 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    - name: Delete previous releases and tags
-      run: |
-        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
-        
-        # Obtener los releases existentes
-        PREVIOUS_RELEASES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
-        
-        # Eliminar releases y tags asociados
-        for release in $(echo "$PREVIOUS_RELEASES" | jq -r '.[].id'); do
-          TAG_NAME=$(echo "$PREVIOUS_RELEASES" | jq -r ".[] | select(.id == $release) | .tag_name")
-          echo "Eliminando release con tag: $TAG_NAME"
-          
-          # Eliminar el release
-          curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$release"
-          
-          # Eliminar el tag
-          git tag -d $TAG_NAME
-          git push --delete origin $TAG_NAME
-        done
-
     - name: Create Release on GitHub
       id: create_release
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
-        VERSION="v$(date +'%Y%m%d%H%M%S')"
+        VERSION="v$(date +'%Y/%m/%d: %H:%M')"
         RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
           https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
