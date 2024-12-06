@@ -47,7 +47,7 @@ jobs:
         FILE_PATH="./dist"  # Directorio donde se encuentran los artefactos de la compilación.
 
         # Comprimir todos los archivos y directorios en el directorio actual
-        tar -czvf release-artifacts.tar.gz -C $FILE_PATH .
+        tar -czvf release-artifacts.tar.gz -C ./dist .
 
         # Subir el archivo comprimido al release de GitHub
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
