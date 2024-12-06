@@ -24,16 +24,14 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    - name: Create a tag
-      id: create_tag
+    # Agregar un tag basado en el commit SHA o una convención que prefieras
+    - name: Create a Git tag
       run: |
-        # Crear un tag basado en la fecha y hora actual
-        TAG="v$(date +'%Y%m%d%H%M%S')"  # Puedes cambiar este formato a algo más apropiado
-        git tag $TAG
-        git push origin $TAG  # Empujar el tag al repositorio
+        TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
+        git tag $TAG_NAME
+        git push origin $TAG_NAME
 
     - name: Create Release and Upload Assets
       uses: softprops/action-gh-release@v2.1.0
       with:
         files: dist/index.js
-        token: ${{ secrets.GITHUB_TOKEN }}  # Usamos el token de GitHub para autenticar la acción
