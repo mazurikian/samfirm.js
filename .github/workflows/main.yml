@@ -40,10 +40,10 @@ jobs:
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
         FILE_PATH="./dist/index.js"
         
-        # Cambié el comando tar aquí para comprimir el archivo index.js correctamente
-        tar -czvf samfirm.tar.gz -C ./dist index.js
+        # Usamos tar con compresión xz para mejorar la compresión
+        tar -caf samfirm.tar.xz -C ./dist index.js
         
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
-          --data-binary @samfirm.tar.gz \
-          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.gz"
+          --data-binary @samfirm.tar.xz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.xz"
