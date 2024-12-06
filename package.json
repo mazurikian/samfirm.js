@@ -1,21 +1,20 @@
 {
   "name": "samfirm",
-  "version": "0.2.0",
-  "description": "A streaming downloader, decryptor and extractor of Samsung firmware",
+  "version": "1.0.0",
+  "description": "Script para descargar y manejar actualizaciones de firmware",
   "scripts": {
-    "build": "ncc build index.ts -m -t",
-    "check-types": "tsc --noEmit"
+    "build": "ncc build index.ts -m -t"
   },
-  "devDependencies": {
-    "@types/cli-progress": "^3.11.6",
-    "@types/node": "^22.10.1",
-    "@types/yargs": "^17.0.33",
-    "@vercel/ncc": "^0.38.3",
+  "dependencies": {
     "axios": "^1.7.9",
     "cli-progress": "^3.8.2",
+    "crypto": "^1.0.1",
     "fast-xml-parser": "^3.21.1",
-    "typescript": "^5.7.2",
     "unzip-stream": "^0.3.4",
     "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3",
+    "typescript": "^5.7.2"
   }
 }
