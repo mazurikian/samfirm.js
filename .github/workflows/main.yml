@@ -24,11 +24,18 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    - name: List directory contents
-      run: sudo apt install tree && tree
-
-#    - name: Upload all files as build artifacts
-#      uses: actions/upload-artifact@v4.4.3
-#      with:
-#        name: all-files
-#        path: .  # Sube todas las carpetas y archivos desde el directorio raíz
+    - name: Create GitHub release
+      id: create_release
+      run: |
+        VERSION=$(date +'%Y%m%d%H%M%S')  # Use timestamp for versioning
+        RESPONSE=$(curl -XPOST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -d "{\"tag_name\": \"v$VERSION\", \"name\": \"Release v$VERSION\", \"body\": \"Automated release created on $VERSION\"}" \
+          https://api.github.com/repos/${{ github.repository }}/releases)
+        echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
+    
+    - name: Upload dist/index.js to GitHub release
+      run: |
+        curl -XPOST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @dist/index.js \
+          "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.release_id }}/assets?name=index.js"
