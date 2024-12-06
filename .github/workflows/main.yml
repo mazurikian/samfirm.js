@@ -21,6 +21,7 @@ jobs:
         node -v
         npm -v
         ls -a
+        cd samfirm.js
 
     - name: Install updated dependencies
       run: |
