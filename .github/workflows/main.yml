@@ -9,21 +9,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Paso 1: Checkout del código
-    - name: Check out code
-      uses: actions/checkout@v4.2.2
+      # Paso 1: Checkout del código
+      - name: Check out code
+        uses: actions/checkout@v4.2.2
 
-    # Paso 2: Configurar Node.js
-    - name: Set up Node.js
-      uses: actions/setup-node@v4.1.0
-      with:
-        node-version: 'lts/*'
-        check-latest: true
+      # Paso 2: Configurar Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 'lts/*'
+          check-latest: true
 
-    # Paso 3: Instalar dependencias
-    - name: Install updated dependencies
-      run: npm install
+      # Paso 3: Instalar dependencias
+      - name: Install updated dependencies
+        run: npm install
 
-    # Paso 4: Compilar el proyecto TypeScript
-    - name: Compile TypeScript
-      run: npm run build && cd dist/ && ls -a
+      # Paso 4: Compilar el proyecto TypeScript
+      - name: Compile TypeScript
+        run: npm run build && cd dist/ && ls -a
+
+      # Paso 5: Comprimir artefactos de la compilación
+      - name: Compress build artifacts
+        run: |
+          tar -czvf build-release.tar.gz -C dist .
+
+      # Paso 6: Crear un release en GitHub
+      - name: Create Release on GitHub
+        id: create_release
+        run: |
+          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+          VERSION="v$(date +'%Y%m%d%H%M%S')"  # Crea una versión con la fecha y hora actual.
+          RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
+          echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
+
+      # Paso 7: Subir los artefactos de la compilación al release
+      - name: Upload build artifacts to GitHub Release
+        run: |
+          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+          RELEASE_ID=${{ steps.create_release.outputs.release_id }}
+          
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @build-release.tar.gz \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=build-release.tar.gz"
