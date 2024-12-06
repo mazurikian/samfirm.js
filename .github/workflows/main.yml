@@ -9,42 +9,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Paso 1: Checkout del código
-      - name: Check out code
-        uses: actions/checkout@v4.2.2
+    # Paso 1: Checkout del código
+    - name: Check out code
+      uses: actions/checkout@v4.2.2
 
-      # Paso 2: Configurar Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v4.1.0
-        with:
-          node-version: 'lts/*'
-          check-latest: true
+    # Paso 2: Configurar Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v4.1.0
+      with:
+        node-version: 'lts/*'
+        check-latest: true
 
-      # Paso 3: Instalar dependencias
-      - name: Install updated dependencies
-        run: npm install
+    # Paso 3: Instalar dependencias
+    - name: Install updated dependencies
+      run: npm install
 
-      # Paso 4: Compilar el proyecto TypeScript
-      - name: Compile TypeScript
-        run: npm run build
+    # Paso 4: Compilar el proyecto TypeScript
+    - name: Compile TypeScript
+      run: npm run build && cd dist/ && ls -a
 
-      # Paso 5: Crear un release en GitHub
-      - name: Create Release on GitHub
-        id: create_release
-        run: |
-          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
-          VERSION="v$(date +'%Y%m%d%H%M%S')"  # Crea una versión con la fecha y hora actual.
-          RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
-            https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
-          echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
+    # Paso 5: Crear un tag y subir el release con la acción 'gh release' de softprop
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/index.js # Aquí especificamos el archivo que queremos incluir en el release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Se usa el token de GitHub para autenticar el release
 
-      # Paso 6: Comprimir y subir la carpeta dist como release
-      - name: Upload build artifacts to GitHub Release
-        run: |
-          RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-          tar -czvf dist.tar.gz -C ./dist .
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @dist.tar.gz \
-            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=dist.tar.gz"
+    # Paso 6: Crear un tag automáticamente
+    - name: Create a new tag
+      run: |
+        VERSION=$(date +'%Y%m%d%H%M%S') # Usar la fecha y hora como tag
+        git tag $VERSION
+        git push origin $VERSION
