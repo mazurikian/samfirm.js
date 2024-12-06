@@ -44,10 +44,10 @@ jobs:
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="./dist"  # Directorio donde se encuentran los artefactos de la compilación.
+        FILE_PATH="dist/"  # Directorio donde se encuentran los artefactos de la compilación.
 
         # Comprimir todos los archivos y directorios en el directorio actual
-        tar -czvf release-artifacts.tar.gz -C ./dist .
+        tar -czvf release-artifacts.tar.gz -C dist/ .
 
         # Subir el archivo comprimido al release de GitHub
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
