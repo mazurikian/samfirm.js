@@ -1,48 +1,48 @@
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v4.2.2
+      - name: Check out code
+        uses: actions/checkout@v4.2.2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4.1.0
-      with:
-        node-version: 'lts/*'
-        check-latest: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 'lts/*'
+          check-latest: true
 
-    - name: Install updated dependencies
-      run: npm install
+      - name: Install updated dependencies
+        run: npm install
 
-    - name: Compile TypeScript
-      run: npm run build
+      - name: Compile TypeScript
+        run: npm run build
 
-    - name: Create Release on GitHub
-      id: create_release
-      run: |
-        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
-        VERSION="v$(date +'%Y%m%d%H%M%S')"
-        RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
-          https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
-        echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
+      - name: Create Release on GitHub
+        id: create_release
+        run: |
+          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+          VERSION="v$(date +'%Y%m%d%H%M%S')"
+          RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
+          echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
-    - name: Upload build artifacts to GitHub Release
-      run: |
-        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
-        RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="./dist/index.js"
-        
-        tar -czvf samfirm.tar.gz -C ./dist index.js
-        
-        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Content-Type: application/octet-stream" \
-          --data-binary @samfirm.tar.gz \
-          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.gz"
+      - name: Upload build artifacts to GitHub Release
+        run: |
+          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+          RELEASE_ID=${{ steps.create_release.outputs.release_id }}
+          FILE_PATH="./dist/index.js"
+          
+          tar -czvf samfirm.tar.gz -C ./dist index.js
+          
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @samfirm.tar.gz \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.gz"
