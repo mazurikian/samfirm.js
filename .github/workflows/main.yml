@@ -26,19 +26,23 @@ jobs:
 
     # Paso 4: Compilar el proyecto TypeScript
     - name: Compile TypeScript
-      run: npm run build && cd dist/ && ls -a
+      run: npm run build
 
-    # Paso 5: Crear un tag antes de crear el release
-    - name: Create a new tag
+    # Paso 5: Crear un tag para el release
+    - name: Create a tag
+      id: create_tag
       run: |
-        VERSION=$(date +'%Y%m%d%H%M%S') # Usar la fecha y hora como tag
-        git tag $VERSION
-        git push origin $VERSION
+        # Define el nombre del tag (puede ser un número de versión o commit hash)
+        TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
+        echo "Tag name: $TAG_NAME"
+        git tag $TAG_NAME
+        git push origin $TAG_NAME
 
-    # Paso 6: Crear el release con el tag
+    # Paso 6: Crear un release en GitHub con los archivos index.js
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/index.js # Aquí especificamos el archivo que queremos incluir en el release
+        files: |
+          $(find . -name 'index.js')
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Se usa el token de GitHub para autenticar el release
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
