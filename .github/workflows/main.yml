@@ -24,13 +24,7 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    - name: Create Release
-      id: create_release
-      run: |
-        VERSION=$(date +'%Y%m%d%H%M%S')  # O usa un número de versión específico si prefieres
-        gh release create "v$VERSION" dist/index.js --title "Release $VERSION" --notes "Release generated from GitHub Actions"
-
-    - name: Upload Release Assets
-      uses: softprops/action-gh-release@v1
+    - name: Create Release and Upload Assets
+      uses: softprops/action-gh-release@v2
       with:
         files: dist/index.js
