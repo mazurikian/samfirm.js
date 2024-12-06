@@ -9,22 +9,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Paso 1: Checkout del código
     - name: Check out code
       uses: actions/checkout@v4.2.2
 
+    # Paso 2: Configurar Node.js
     - name: Set up Node.js
       uses: actions/setup-node@v4.1.0
       with:
         node-version: 'lts/*'
         check-latest: true
 
+    # Paso 3: Instalar dependencias
     - name: Install updated dependencies
       run: npm install
 
+    # Paso 4: Compilar el proyecto TypeScript
     - name: Compile TypeScript
       run: npm run build
 
-    # Paso 7: Crear un release en GitHub
+    # Paso 5: Crear un release en GitHub
     - name: Create Release on GitHub
       id: create_release
       run: |
@@ -35,17 +39,18 @@ jobs:
           https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
         echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
-    # Paso 8: Subir los artefactos de la compilación al release
+    # Paso 6: Subir los artefactos al release en GitHub
     - name: Upload build artifacts to GitHub Release
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="dist/index.js"  # Ruta del archivo compilado
+        FILE_PATH="./"  # Directorio donde se encuentran los artefactos de la compilación.
 
-        # Subir archivo comprimido de los artefactos
-        tar -czvf release.tar.gz -C ./dist index.js
-        
+        # Comprimir todos los archivos y directorios en el directorio actual
+        tar -czvf release-artifacts.tar.gz -C $FILE_PATH .
+
+        # Subir el archivo comprimido al release de GitHub
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
-          --data-binary @release.tar.gz \
-          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=release.tar.gz"
+          --data-binary @release-artifacts.tar.gz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=release-artifacts.tar.gz"
