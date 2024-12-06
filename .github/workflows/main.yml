@@ -40,7 +40,7 @@ jobs:
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="./dist/index.js"  # Ruta del archivo compilado
+        FILE_PATH="dist/index.js"  # Ruta del archivo compilado
 
         # Subir archivo comprimido de los artefactos
         tar -czvf release.tar.gz -C ./dist index.js
