@@ -6,6 +6,7 @@ import crypto from "crypto";
 import fs from "fs";
 import { parse as xmlParse } from "fast-xml-parser";
 import path from "path";
+import unzip from "unzip-stream";
 import yargs from "yargs";
 
 import { handleAuthRotation } from "./utils/authUtils";
@@ -191,12 +192,17 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
           progressBar.update(downloadedSize, { file: currentFile });
         })
         .pipe(binaryDecipher)
-        .pipe(fs.createWriteStream(path.join(outputFolder, binaryFilename))) // Guardamos el archivo tal cual, sin descomprimirlo
-        .on("finish", () => {
-          if (downloadedSize === binaryByteSize) {
-            console.log('Descarga completada');
-            process.exit();
-          }
+        .pipe(unzip.Parse())
+        .on("entry", (entry) => {
+          currentFile = `${entry.path.slice(0, 18)}...`;
+          progressBar.update(downloadedSize, { file: currentFile });
+          entry
+            .pipe(fs.createWriteStream(path.join(outputFolder, entry.path)))
+            .on("finish", () => {
+              if (downloadedSize === binaryByteSize) {
+                process.exit();
+              }
+            });
         });
     });
 };
