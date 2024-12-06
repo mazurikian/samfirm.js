@@ -21,6 +21,8 @@ jobs:
         node -v
         npm -v
         sudo apt install tree -y && tree
+        cd samfirm.js
+        ls -a
         npm i
 
     - name: Install updated dependencies
