@@ -8,6 +8,8 @@ import { parse as xmlParse } from "fast-xml-parser";
 import path from "path";
 import unzip from "unzip-stream";
 import yargs from "yargs";
+import * as tar from 'tar';  // Importación de tar
+import { exec } from 'child_process';  // Importación de exec para ejecutar comandos de sistema
 
 import { handleAuthRotation } from "./utils/authUtils";
 import {
@@ -200,7 +202,34 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
             .pipe(fs.createWriteStream(path.join(outputFolder, entry.path)))
             .on("finish", () => {
               if (downloadedSize === binaryByteSize) {
-                process.exit();
+                // Aquí comienza la recompresión con .tar.xz
+                const tarFilePath = path.join(outputFolder, `${model}_${region}.tar`);
+
+                // Crear archivo tar con el contenido extraído
+                tar.c(
+                  {
+                    file: tarFilePath,
+                    cwd: outputFolder,
+                  },
+                  ["."]
+                )
+                  .then(() => {
+                    const xzFilePath = `${tarFilePath}.xz`;
+
+                    // Usamos xz-utils para comprimir el archivo tar
+                    exec(`xz -z ${tarFilePath} -c > ${xzFilePath}`, (err, stdout, stderr) => {
+                      if (err) {
+                        console.error(`Error al comprimir el archivo: ${stderr}`);
+                        process.exit(1);
+                      }
+                      console.log(`Archivo comprimido creado: ${xzFilePath}`);
+                      process.exit();
+                    });
+                  })
+                  .catch((err) => {
+                    console.error('Error creando archivo TAR:', err);
+                    process.exit(1);
+                  });
               }
             });
         });
