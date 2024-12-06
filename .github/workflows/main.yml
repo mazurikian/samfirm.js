@@ -44,10 +44,10 @@ jobs:
       run: |
         REPO_NAME=$(basename ${GITHUB_REPOSITORY})
         RELEASE_ID=${{ steps.create_release.outputs.release_id }}
-        FILE_PATH="./utils/"  # Directorio donde se encuentran los artefactos de la compilación.
+        FILE_PATH=".utils/"  # Directorio donde se encuentran los artefactos de la compilación.
         
         # Subir archivo comprimido de los artefactos
-        tar -czvf syndical-release.tar.gz -C ./utils/ .
+        tar -czvf syndical-release.tar.gz -C .utils/ .
         
         curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
