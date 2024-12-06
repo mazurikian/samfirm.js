@@ -25,6 +25,6 @@ jobs:
       run: npm run build
 
     - name: Create Release and Upload Assets
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v2.1.0
       with:
         files: dist/index.js
