@@ -24,21 +24,28 @@ jobs:
     - name: Compile TypeScript
       run: npm run build
 
-    # Configurar Git para usar el token de autenticación de GitHub Actions
-    - name: Set up Git credentials
+    # Paso 7: Crear un release en GitHub
+    - name: Create Release on GitHub
+      id: create_release
       run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+        VERSION="v$(date +'%Y%m%d%H%M%S')"  # Crea una versión con la fecha y hora actual.
+        RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
+        echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
-    # Crear un tag
-    - name: Create a Git tag
+    # Paso 8: Subir los artefactos de la compilación al release
+    - name: Upload build artifacts to GitHub Release
       run: |
-        TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
-        git tag $TAG_NAME
-        git push origin $TAG_NAME
+        REPO_NAME=$(basename ${GITHUB_REPOSITORY})
+        RELEASE_ID=${{ steps.create_release.outputs.release_id }}
+        FILE_PATH="./dist/index.js"  # Ruta del archivo compilado
 
-    - name: Create Release and Upload Assets
-      uses: softprops/action-gh-release@v2.1.0
-      with:
-        files: dist/index.js
+        # Subir archivo comprimido de los artefactos
+        tar -czvf release.tar.gz -C ./dist index.js
+        
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @release.tar.gz \
+          "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=release.tar.gz"
