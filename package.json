@@ -27,9 +27,6 @@
     "check-source-formatting": "prettier -c .",
     "check-types": "tsc --noEmit",
     "format-source": "prettier -w .",
-    "lint": "eslint --max-warnings 0 --ext .ts .",
-    "prepack": "rm -rf dist && npm run build",
-    "start": "ts-node-dev --transpile-only index.ts"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",
@@ -40,11 +37,8 @@
     "@vercel/ncc": "^0.38.3",
     "axios": "^1.7.9",
     "cli-progress": "^3.8.2",
-    "eslint": "^9.16.0",
-    "eslint-config-prettier": "^9.1.0",
     "fast-xml-parser": "^3.21.1",
     "prettier": "^3.4.2",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.2",
     "unzip-stream": "^0.3.4",
     "yargs": "^17.7.2"
