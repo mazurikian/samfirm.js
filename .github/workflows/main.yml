@@ -21,6 +21,7 @@ jobs:
         node -v
         npm -v
         sudo apt install tree -y && tree
+        npm i
 
     - name: Install updated dependencies
       run: |
