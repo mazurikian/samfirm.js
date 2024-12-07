@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import cliProgress from "cli-progress";
 import yargs from "yargs";
-import { parse as xmlParse } from "fast-xml-parser";
+import { XMLParser } from "fast-xml-parser";
 
 import { handleAuthRotation } from "./utils/authUtils";
 import {
@@ -18,6 +18,8 @@ import { version as packageVersion } from "./package.json";
 
 type FirmwareVersion = { pda: string; csc: string; modem: string };
 
+const xmlParser = new XMLParser();
+
 const getLatestVersion = async (
   region: string,
   model: string,
@@ -26,7 +28,7 @@ const getLatestVersion = async (
     const response = await axios.get(
       `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`,
     );
-    const parsedData = xmlParse(response.data);
+    const parsedData = xmlParser.parse(response.data);
     const [pda, csc, modem] =
       parsedData.versioninfo.firmware.version.latest.split("/");
     return { pda, csc, modem: modem || "N/A" };
@@ -102,7 +104,7 @@ const main = async (
       )
       .then((res) => {
         handleHeaders(res.headers);
-        const parsedInfo = xmlParse(res.data);
+        const parsedInfo = xmlParser.parse(res.data);
         return {
           binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
           binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
@@ -186,7 +188,6 @@ const main = async (
           )
           .on("finish", () => {
             if (downloadedSize === binaryInfo.binaryByteSize) {
-              // Renombrar archivo de .zip.enc4 a .zip después de desencriptado
               const originalFilePath = path.join(
                 outputFolder,
                 binaryInfo.binaryFilename,
