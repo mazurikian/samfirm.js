@@ -1,39 +1,19 @@
 {
-  // Información básica del paquete
   "name": "samfirm",
   "version": "1.0.0",
   "description": "Script para descargar y manejar actualizaciones de firmware",
-
-  // Scripts definidos para automatización de tareas
   "scripts": {
-    // Script para compilar el archivo TypeScript utilizando ncc
     "build": "ncc build index.ts -m -t"
   },
-
-  // Dependencias necesarias para la ejecución del paquete
   "dependencies": {
-    // Axios para realizar peticiones HTTP
     "axios": "^1.7.9",
-
-    // CLI Progress para mostrar barras de progreso en la terminal
     "cli-progress": "^3.8.2",
-
-    // Fast XML Parser para parsear archivos XML
     "fast-xml-parser": "^3.21.1",
-
-    // Unzip-stream para extraer archivos comprimidos en formato zip
     "unzip-stream": "^0.3.4",
-
-    // Yargs para el manejo de argumentos de línea de comando
     "yargs": "^17.7.2"
   },
-
-  // Dependencias de desarrollo necesarias solo en entorno de desarrollo
   "devDependencies": {
-    // NCC (Node.js Compiler Collection) para empaquetar el código en una sola unidad
     "@vercel/ncc": "^0.38.3",
-
-    // TypeScript para la compilación de archivos .ts
     "typescript": "^5.7.2"
   }
 }
