@@ -48,14 +48,8 @@ jobs:
           RELEASE_ID=${{ steps.create_release.outputs.release_id }}
           FILE_PATH="./dist/index.js"
 
-          # Verifica que el archivo existe
-          if [ ! -f "$FILE_PATH" ]; then
-            echo "Error: $FILE_PATH no existe."
-            exit 1
-          fi
-
           # Sube el archivo crudo al release
           curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/javascript" \
+            -H "Content-Type: application/octet-stream" \
             --data-binary @$FILE_PATH \
             "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=index.js"
