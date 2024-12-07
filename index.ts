@@ -4,7 +4,6 @@ import axios, { AxiosResponse } from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import unzip from 'unzip-stream';
 import cliProgress from 'cli-progress';
 import yargs from 'yargs';
 import { parse as xmlParse } from 'fast-xml-parser';
@@ -145,14 +144,9 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
             downloadedSize += buffer.length;
             progressBar.update(downloadedSize, { file: currentFile });
           })
-          .pipe(binaryDecipher)
-          .pipe(unzip.Parse())
-          .on('entry', (entry) => {
-            currentFile = `${entry.path.slice(0, 18)}...`;
-            progressBar.update(downloadedSize, { file: currentFile });
-            entry.pipe(fs.createWriteStream(path.join(outputFolder, entry.path))).on('finish', () => {
-              if (downloadedSize === binaryInfo.binaryByteSize) process.exit();
-            });
+          .pipe(fs.createWriteStream(path.join(outputFolder, binaryInfo.binaryFilename)))
+          .on('finish', () => {
+            if (downloadedSize === binaryInfo.binaryByteSize) process.exit();
           });
       });
   } catch (error) {
