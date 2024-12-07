@@ -2,10 +2,8 @@ import crypto from 'crypto';
 import { j2xParser } from 'fast-xml-parser';
 import type { FUSMsg } from '../types/FUSMsg';
 
-// XML parser instance
 const parser = new j2xParser({});
 
-// Generate logic check for encryption
 const getLogicCheck = (input: string, nonce: string): string => {
   let out = '';
   for (let i = 0; i < nonce.length; i++) {
@@ -15,7 +13,6 @@ const getLogicCheck = (input: string, nonce: string): string => {
   return out;
 };
 
-// Generate binary information message
 export const getBinaryInformMsg = (version: string, region: string, model: string, imei: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
@@ -38,7 +35,6 @@ export const getBinaryInformMsg = (version: string, region: string, model: strin
   return parser.parse(msg);
 };
 
-// Generate binary initialization message
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
@@ -54,7 +50,6 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   return parser.parse(msg);
 };
 
-// Generate decryption key based on version and logical value
 export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
   return crypto.createHash('md5').update(getLogicCheck(version, logicalValue)).digest();
 };
