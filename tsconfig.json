@@ -1,33 +1,14 @@
 {
   "compilerOptions": {
-    // Define el objetivo de compilación para ECMAScript
     "target": "esnext",
-
-    // Configura la resolución de módulos según el sistema de módulos de Node.js
     "moduleResolution": "node",
-
-    // Define el sistema de módulos utilizado (CommonJS en este caso)
     "module": "commonjs",
-
-    // Habilita el modo estricto para aplicar reglas estrictas de validación de código
     "strict": true,
-
-    // Aísla los módulos para una mejor verificación de tipo
     "isolatedModules": true,
-
-    // Permite la importación de archivos JSON como módulos
     "resolveJsonModule": true,
-
-    // Habilita la interoperabilidad entre módulos CommonJS y ESModules
     "esModuleInterop": true,
-
-    // Permite el uso de decoradores experimentales
     "experimentalDecorators": true,
-
-    // Define el comportamiento de las clases en relación con los campos estáticos de ES2022
     "useDefineForClassFields": true
   },
-
-  // Excluye la carpeta "node_modules" del proceso de compilación
   "exclude": ["node_modules"]
 }
