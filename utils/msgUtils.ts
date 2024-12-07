@@ -1,39 +1,31 @@
-import crypto from "crypto";
-import { j2xParser } from "fast-xml-parser";
+import crypto from 'crypto';
+import { j2xParser } from 'fast-xml-parser';
+import type { FUSMsg } from '../types/FUSMsg';
 
-import type { FUSMsg } from "../types/FUSMsg";
-
+// XML parser instance
 const parser = new j2xParser({});
 
-const getLogicCheck = (input: string, nonce: string) => {
-  let out = "";
-
+// Generate logic check for encryption
+const getLogicCheck = (input: string, nonce: string): string => {
+  let out = '';
   for (let i = 0; i < nonce.length; i++) {
-    const char: number = nonce.charCodeAt(i);
+    const char = nonce.charCodeAt(i);
     out += input[char & 0xf];
   }
-
   return out;
 };
 
-export const getBinaryInformMsg = (
-  version: string,
-  region: string,
-  model: string,
-  imei: string,
-  nonce: string
-): string => {
+// Generate binary information message
+export const getBinaryInformMsg = (version: string, region: string, model: string, imei: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
-      FUSHdr: {
-        ProtoVer: "1.0",
-      },
+      FUSHdr: { ProtoVer: '1.0' },
       FUSBody: {
         Put: {
           ACCESS_MODE: { Data: 2 },
           BINARY_NATURE: { Data: 1 },
-          CLIENT_PRODUCT: { Data: "Smart Switch" },
-          CLIENT_VERSION: { Data: "4.3.24062_1" },
+          CLIENT_PRODUCT: { Data: 'Smart Switch' },
+          CLIENT_VERSION: { Data: '4.3.24062_1' },
           DEVICE_IMEI_PUSH: { Data: imei },
           DEVICE_FW_VERSION: { Data: version },
           DEVICE_LOCAL_CODE: { Data: region },
@@ -43,36 +35,26 @@ export const getBinaryInformMsg = (
       },
     },
   };
-
   return parser.parse(msg);
 };
 
+// Generate binary initialization message
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
-      FUSHdr: {
-        ProtoVer: "1.0",
-      },
+      FUSHdr: { ProtoVer: '1.0' },
       FUSBody: {
         Put: {
           BINARY_FILE_NAME: { Data: filename },
-          LOGIC_CHECK: {
-            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce),
-          },
+          LOGIC_CHECK: { Data: getLogicCheck(filename.split('.')[0].slice(-16), nonce) },
         },
       },
     },
   };
-
   return parser.parse(msg);
 };
 
-export const getDecryptionKey = (
-  version: string,
-  logicalValue: string
-): Buffer => {
-  return crypto
-    .createHash("md5")
-    .update(getLogicCheck(version, logicalValue))
-    .digest();
+// Generate decryption key based on version and logical value
+export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
+  return crypto.createHash('md5').update(getLogicCheck(version, logicalValue)).digest();
 };
