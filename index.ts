@@ -13,27 +13,9 @@ import { handleAuthRotation } from './utils/authUtils';
 import { getBinaryInformMsg, getBinaryInitMsg, getDecryptionKey } from './utils/msgUtils';
 import { version as packageVersion } from './package.json';
 
-// Constants for URLs and API endpoints
+// Constants for URLs
 const FOTA_URL = 'https://fota-cloud-dn.ospserver.net/firmware';
 const FUS_URL = 'https://neofussvr.sslcs.cdngc.net';
-const CLOUD_NEOFUSSVR_URL = 'http://cloud-neofussvr.samsungmobile.com';
-const USER_AGENT = 'Kies2.0_FUS';
-
-const GENERATE_NONCE_URL = '/NF_DownloadGenerateNonce.do';
-const DOWNLOAD_BINARY_INFORM_URL = '/NF_DownloadBinaryInform.do';
-const DOWNLOAD_BINARY_INIT_URL = '/NF_DownloadBinaryInitForMass.do';
-const DOWNLOAD_BINARY_URL = '/NF_DownloadBinaryForMass.do';
-
-// Constants for encryption
-const CIPHER_ALGORITHM = 'aes-128-ecb';
-const CIPHER_MODE = null;  // ECB mode for encryption
-
-// Constants for HTTP headers
-const ACCEPT_HEADER = 'application/xml';
-const CONTENT_TYPE_HEADER = 'application/xml';
-
-// Constants for file paths
-const OUTPUT_FOLDER = `${process.cwd()}/firmware_downloads/`;
 
 // Type for version data
 type FirmwareVersion = { pda: string; csc: string; modem: string };
@@ -59,7 +41,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     console.log(`\nLatest version:\nPDA: ${pda}\nCSC: ${csc}\nMODEM: ${modem}`);
 
     const nonce = { encrypted: '', decrypted: '' };
-    const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
+    const headers: Record<string, string> = { 'User-Agent': 'Kies2.0_FUS' };
 
     // Handle headers for authentication and session management
     const handleHeaders = (responseHeaders: Record<string, string>) => {
@@ -76,19 +58,19 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     };
 
     // Fetch nonce for authentication
-    await axios.post(`${FUS_URL}${GENERATE_NONCE_URL}`, '', {
+    await axios.post(`${FUS_URL}/NF_DownloadGenerateNonce.do`, '', {
       headers: {
         Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
-        'User-Agent': USER_AGENT,
-        Accept: ACCEPT_HEADER,
+        'User-Agent': 'Kies2.0_FUS',
+        Accept: 'application/xml',
       },
     }).then((res) => {
       handleHeaders(res.headers);
     });
 
     // Fetch binary information
-    const binaryInfo = await axios.post(`${FUS_URL}${DOWNLOAD_BINARY_INFORM_URL}`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
-      headers: { ...headers, Accept: ACCEPT_HEADER, 'Content-Type': CONTENT_TYPE_HEADER },
+    const binaryInfo = await axios.post(`${FUS_URL}/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
+      headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
       handleHeaders(res.headers);
       const parsedInfo = xmlParse(res.data);
@@ -109,15 +91,15 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
     // Start binary download
-    await axios.post(`${FUS_URL}${DOWNLOAD_BINARY_INIT_URL}`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
-      headers: { ...headers, Accept: ACCEPT_HEADER, 'Content-Type': CONTENT_TYPE_HEADER },
+    await axios.post(`${FUS_URL}/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
+      headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
       handleHeaders(res.headers);
     });
 
-    const binaryDecipher = crypto.createDecipheriv(CIPHER_ALGORITHM, decryptionKey, CIPHER_MODE);
+    const binaryDecipher = crypto.createDecipheriv('aes-128-ecb', decryptionKey, null);
 
-    await axios.get(`${CLOUD_NEOFUSSVR_URL}${DOWNLOAD_BINARY_URL}?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`, {
+    await axios.get(`http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`, {
       headers,
       responseType: 'stream',
     }).then((res: AxiosResponse) => {
