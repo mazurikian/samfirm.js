@@ -13,14 +13,13 @@ import { handleAuthRotation } from './utils/authUtils';
 import { getBinaryInformMsg, getBinaryInitMsg, getDecryptionKey } from './utils/msgUtils';
 import { version as packageVersion } from './package.json';
 
-// Constants for URLs
-const FOTA_URL = 'https://fota-cloud-dn.ospserver.net/firmware';
-const FUS_URL = 'https://neofussvr.sslcs.cdngc.net';
+// Type for version data
+type FirmwareVersion = { pda: string; csc: string; modem: string };
 
 // Fetch the latest firmware version for the given region and model
 const getLatestVersion = async (region: string, model: string): Promise<FirmwareVersion> => {
   try {
-    const response = await axios.get(`${FOTA_URL}/${region}/${model}/version.xml`);
+    const response = await axios.get(`https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`);
     const parsedData = xmlParse(response.data);
     const [pda, csc, modem] = parsedData.versioninfo.firmware.version.latest.split('/');
     return { pda, csc, modem: modem || 'N/A' };
@@ -55,7 +54,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     };
 
     // Fetch nonce for authentication
-    await axios.post(`${FUS_URL}/NF_DownloadGenerateNonce.do`, '', {
+    await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do`, '', {
       headers: {
         Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
         'User-Agent': 'Kies2.0_FUS',
@@ -66,7 +65,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     });
 
     // Fetch binary information
-    const binaryInfo = await axios.post(`${FUS_URL}/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
+    const binaryInfo = await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
       handleHeaders(res.headers);
@@ -88,7 +87,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
     // Start binary download
-    await axios.post(`${FUS_URL}/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
+    await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
       handleHeaders(res.headers);
