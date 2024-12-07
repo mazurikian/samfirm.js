@@ -1,11 +1,11 @@
-import crypto from 'crypto';
-import { j2xParser } from 'fast-xml-parser';
-import type { FUSMsg } from '../types/FUSMsg';
+import crypto from "crypto";
+import { j2xParser } from "fast-xml-parser";
+import type { FUSMsg } from "../types/FUSMsg";
 
 const parser = new j2xParser({});
 
 const getLogicCheck = (input: string, nonce: string): string => {
-  let out = '';
+  let out = "";
   for (let i = 0; i < nonce.length; i++) {
     const char = nonce.charCodeAt(i);
     out += input[char & 0xf];
@@ -18,17 +18,17 @@ export const getBinaryInformMsg = (
   region: string,
   model: string,
   imei: string,
-  nonce: string
+  nonce: string,
 ): string => {
   const msg: FUSMsg = {
     FUSMsg: {
-      FUSHdr: { ProtoVer: '1.0' },
+      FUSHdr: { ProtoVer: "1.0" },
       FUSBody: {
         Put: {
           ACCESS_MODE: { Data: 2 },
           BINARY_NATURE: { Data: 1 },
-          CLIENT_PRODUCT: { Data: 'Smart Switch' },
-          CLIENT_VERSION: { Data: '4.3.24062_1' },
+          CLIENT_PRODUCT: { Data: "Smart Switch" },
+          CLIENT_VERSION: { Data: "4.3.24062_1" },
           DEVICE_IMEI_PUSH: { Data: imei },
           DEVICE_FW_VERSION: { Data: version },
           DEVICE_LOCAL_CODE: { Data: region },
@@ -44,11 +44,13 @@ export const getBinaryInformMsg = (
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
-      FUSHdr: { ProtoVer: '1.0' },
+      FUSHdr: { ProtoVer: "1.0" },
       FUSBody: {
         Put: {
           BINARY_FILE_NAME: { Data: filename },
-          LOGIC_CHECK: { Data: getLogicCheck(filename.split('.')[0].slice(-16), nonce) },
+          LOGIC_CHECK: {
+            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce),
+          },
         },
       },
     },
@@ -56,9 +58,12 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   return parser.parse(msg);
 };
 
-export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
+export const getDecryptionKey = (
+  version: string,
+  logicalValue: string,
+): Buffer => {
   return crypto
-    .createHash('md5')
+    .createHash("md5")
     .update(getLogicCheck(version, logicalValue))
     .digest();
 };
