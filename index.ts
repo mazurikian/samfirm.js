@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Importación de módulos necesarios
 import axios, { AxiosResponse } from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -13,10 +14,10 @@ import { handleAuthRotation } from './utils/authUtils';
 import { getBinaryInformMsg, getBinaryInitMsg, getDecryptionKey } from './utils/msgUtils';
 import { version as packageVersion } from './package.json';
 
-// Type for version data
+// Definición de tipos
 type FirmwareVersion = { pda: string; csc: string; modem: string };
 
-// Fetch the latest firmware version for the given region and model
+// Función para obtener la última versión del firmware
 const getLatestVersion = async (region: string, model: string): Promise<FirmwareVersion> => {
   try {
     const response = await axios.get(`https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`);
@@ -28,18 +29,20 @@ const getLatestVersion = async (region: string, model: string): Promise<Firmware
   }
 };
 
-// Main function
+// Función principal
 const main = async (region: string, model: string, imei: string): Promise<void> => {
   try {
     console.log(`Model: ${model}\nRegion: ${region}\nIMEI: ${imei}`);
 
+    // Obtener y mostrar la última versión del firmware
     const { pda, csc, modem } = await getLatestVersion(region, model);
     console.log(`\nLatest version:\nPDA: ${pda}\nCSC: ${csc}\nMODEM: ${modem}`);
 
+    // Variables iniciales
     const nonce = { encrypted: '', decrypted: '' };
     const headers: Record<string, string> = { 'User-Agent': 'Kies2.0_FUS' };
 
-    // Handle headers for authentication and session management
+    // Función para manejar las cabeceras de autenticación y sesión
     const handleHeaders = (responseHeaders: Record<string, string>) => {
       if (responseHeaders.nonce) {
         const { Authorization, nonce: newNonce } = handleAuthRotation(responseHeaders);
@@ -53,18 +56,16 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
       }
     };
 
-    // Fetch nonce for authentication
+    // Solicitar nonce para autenticación
     await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do`, '', {
       headers: {
         Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
         'User-Agent': 'Kies2.0_FUS',
         Accept: 'application/xml',
       },
-    }).then((res) => {
-      handleHeaders(res.headers);
-    });
+    }).then((res) => handleHeaders(res.headers));
 
-    // Fetch binary information
+    // Obtener información del binario
     const binaryInfo = await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
@@ -81,20 +82,20 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
       };
     });
 
-    // Log binary info
+    // Mostrar información del binario
     console.log(`\nOS: ${binaryInfo.binaryOSVersion}\nFilename: ${binaryInfo.binaryFilename}\nSize: ${binaryInfo.binaryByteSize} bytes\nLogic Value: ${binaryInfo.binaryLogicValue}\nDescription: ${binaryInfo.binaryDescription.split('\n').join('\n    ')}`);
 
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
-    // Start binary download
+    // Iniciar descarga del binario
     await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
-    }).then((res) => {
-      handleHeaders(res.headers);
-    });
+    }).then((res) => handleHeaders(res.headers));
 
+    // Decodificador de binario
     const binaryDecipher = crypto.createDecipheriv('aes-128-ecb', decryptionKey, null);
 
+    // Descargar y descomprimir el binario
     await axios.get(`http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`, {
       headers,
       responseType: 'stream',
@@ -125,7 +126,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
   }
 };
 
-// Command-line argument parsing and execution
+// Parseo de argumentos y ejecución del programa
 const { argv } = yargs
   .option('model', { alias: 'm', describe: 'Model', type: 'string', demandOption: true })
   .option('region', { alias: 'r', describe: 'Region', type: 'string', demandOption: true })
