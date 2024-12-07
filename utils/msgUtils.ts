@@ -1,8 +1,8 @@
 import crypto from "crypto";
-import { j2xParser } from "fast-xml-parser";
+import { XMLBuilder } from "fast-xml-parser";
 import type { FUSMsg } from "../types/FUSMsg";
 
-const parser = new j2xParser({});
+const parser = new XMLBuilder({});
 
 const getLogicCheck = (input: string, nonce: string): string => {
   let out = "";
@@ -38,7 +38,7 @@ export const getBinaryInformMsg = (
       },
     },
   };
-  return parser.parse(msg);
+  return parser.build(msg);
 };
 
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
@@ -55,7 +55,7 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
       },
     },
   };
-  return parser.parse(msg);
+  return parser.build(msg);
 };
 
 export const getDecryptionKey = (
