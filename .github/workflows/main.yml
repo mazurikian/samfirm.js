@@ -15,7 +15,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4.1.0
         with:
-          node-version: 'lts/*'
+          node-version: "lts/*"
           check-latest: true
 
       - name: Install updated dependencies
@@ -39,9 +39,9 @@ jobs:
           REPO_NAME=$(basename ${GITHUB_REPOSITORY})
           RELEASE_ID=${{ steps.create_release.outputs.release_id }}
           FILE_PATH="./dist/index.js"
-          
+
           tar -czvf samfirm.tar.gz -C ./dist index.js
-          
+
           curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @samfirm.tar.gz \
