@@ -13,7 +13,13 @@ const getLogicCheck = (input: string, nonce: string): string => {
   return out;
 };
 
-export const getBinaryInformMsg = (version: string, region: string, model: string, imei: string, nonce: string): string => {
+export const getBinaryInformMsg = (
+  version: string,
+  region: string,
+  model: string,
+  imei: string,
+  nonce: string
+): string => {
   const msg: FUSMsg = {
     FUSMsg: {
       FUSHdr: { ProtoVer: '1.0' },
@@ -51,5 +57,8 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
 };
 
 export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
-  return crypto.createHash('md5').update(getLogicCheck(version, logicalValue)).digest();
+  return crypto
+    .createHash('md5')
+    .update(getLogicCheck(version, logicalValue))
+    .digest();
 };
