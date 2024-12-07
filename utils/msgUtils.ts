@@ -2,27 +2,21 @@ import crypto from 'crypto';
 import { j2xParser } from 'fast-xml-parser';
 import type { FUSMsg } from '../types/FUSMsg';
 
-// Instancia del parser XML
+// XML parser instance
 const parser = new j2xParser({});
 
-// Función para generar verificación lógica
+// Generate logic check for encryption
 const getLogicCheck = (input: string, nonce: string): string => {
-  let result = '';
+  let out = '';
   for (let i = 0; i < nonce.length; i++) {
     const char = nonce.charCodeAt(i);
-    result += input[char & 0xf];
+    out += input[char & 0xf];
   }
-  return result;
+  return out;
 };
 
-// Generar mensaje de información del binario
-export const getBinaryInformMsg = (
-  version: string,
-  region: string,
-  model: string,
-  imei: string,
-  nonce: string
-): string => {
+// Generate binary information message
+export const getBinaryInformMsg = (version: string, region: string, model: string, imei: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
       FUSHdr: { ProtoVer: '1.0' },
@@ -44,7 +38,7 @@ export const getBinaryInformMsg = (
   return parser.parse(msg);
 };
 
-// Generar mensaje de inicialización del binario
+// Generate binary initialization message
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   const msg: FUSMsg = {
     FUSMsg: {
@@ -60,8 +54,7 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   return parser.parse(msg);
 };
 
-// Generar clave de descifrado basada en la versión y valor lógico
+// Generate decryption key based on version and logical value
 export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
-  const logicCheck = getLogicCheck(version, logicalValue);
-  return crypto.createHash('md5').update(logicCheck).digest();
+  return crypto.createHash('md5').update(getLogicCheck(version, logicalValue)).digest();
 };
