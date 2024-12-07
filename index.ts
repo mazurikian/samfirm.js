@@ -17,9 +17,6 @@ import { version as packageVersion } from './package.json';
 const FOTA_URL = 'https://fota-cloud-dn.ospserver.net/firmware';
 const FUS_URL = 'https://neofussvr.sslcs.cdngc.net';
 
-// Type for version data
-type FirmwareVersion = { pda: string; csc: string; modem: string };
-
 // Fetch the latest firmware version for the given region and model
 const getLatestVersion = async (region: string, model: string): Promise<FirmwareVersion> => {
   try {
