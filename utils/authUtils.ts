@@ -23,5 +23,8 @@ export const handleAuthRotation = (responseHeaders: Record<string, string>) => {
   const { nonce } = responseHeaders;
   const nonceDecrypted = decryptNonce(nonce);
   const authorization = getAuthorization(nonceDecrypted);
-  return { Authorization: `FUS nonce="${nonce}", signature="${authorization}", nc="", type="", realm="", newauth="1"`, nonce: { decrypted: nonceDecrypted, encrypted: nonce } };
+  return {
+    Authorization: `FUS nonce="${nonce}", signature="${authorization}", nc="", type="", realm="", newauth="1"`,
+    nonce: { decrypted: nonceDecrypted, encrypted: nonce },
+  };
 };
