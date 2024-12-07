@@ -13,28 +13,12 @@ import { handleAuthRotation } from './utils/authUtils';
 import { getBinaryInformMsg, getBinaryInitMsg, getDecryptionKey } from './utils/msgUtils';
 import { version as packageVersion } from './package.json';
 
-// Type for version data
 type FirmwareVersion = { pda: string; csc: string; modem: string };
 
-// Centralize header management and authentication
-const updateHeaders = (responseHeaders: Record<string, string>, nonce: { encrypted: string, decrypted: string }, headers: Record<string, string>) => {
-  if (responseHeaders.nonce) {
-    const { Authorization, nonce: newNonce } = handleAuthRotation(responseHeaders);
-    Object.assign(nonce, newNonce);
-    headers.Authorization = Authorization;
-  }
-
-  const sessionID = responseHeaders['set-cookie']?.find((cookie: string) => cookie.startsWith('JSESSIONID'))?.split(';')[0];
-  if (sessionID) {
-    headers.Cookie = sessionID;
-  }
-};
-
-// Fetch the latest firmware version for the given region and model
 const getLatestVersion = async (region: string, model: string): Promise<FirmwareVersion> => {
   try {
-    const { data } = await axios.get(`https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`);
-    const parsedData = xmlParse(data);
+    const response = await axios.get(`https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`);
+    const parsedData = xmlParse(response.data);
     const [pda, csc, modem] = parsedData.versioninfo.firmware.version.latest.split('/');
     return { pda, csc, modem: modem || 'N/A' };
   } catch (error) {
@@ -42,7 +26,6 @@ const getLatestVersion = async (region: string, model: string): Promise<Firmware
   }
 };
 
-// Main function
 const main = async (region: string, model: string, imei: string): Promise<void> => {
   try {
     console.log(`Model: ${model}\nRegion: ${region}\nIMEI: ${imei}`);
@@ -53,20 +36,33 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
     const nonce = { encrypted: '', decrypted: '' };
     const headers: Record<string, string> = { 'User-Agent': 'Kies2.0_FUS' };
 
-    // Fetch nonce for authentication and update headers
+    const handleHeaders = (responseHeaders: Record<string, string>) => {
+      if (responseHeaders.nonce) {
+        const { Authorization, nonce: newNonce } = handleAuthRotation(responseHeaders);
+        Object.assign(nonce, newNonce);
+        headers.Authorization = Authorization;
+      }
+
+      const sessionID = responseHeaders['set-cookie']?.find((cookie: string) => cookie.startsWith('JSESSIONID'))?.split(';')[0];
+      if (sessionID) {
+        headers.Cookie = sessionID;
+      }
+    };
+
     await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do`, '', {
       headers: {
         Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
         'User-Agent': 'Kies2.0_FUS',
         Accept: 'application/xml',
       },
-    }).then((res) => updateHeaders(res.headers, nonce, headers));
+    }).then((res) => {
+      handleHeaders(res.headers);
+    });
 
-    // Fetch binary information in parallel with nonce fetch to optimize time
-    const binaryInfoPromise = axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
+    const binaryInfo = await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
     }).then((res) => {
-      updateHeaders(res.headers, nonce, headers);
+      handleHeaders(res.headers);
       const parsedInfo = xmlParse(res.data);
       return {
         binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
@@ -79,16 +75,15 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
       };
     });
 
-    // Log binary info
-    const binaryInfo = await binaryInfoPromise;
     console.log(`\nOS: ${binaryInfo.binaryOSVersion}\nFilename: ${binaryInfo.binaryFilename}\nSize: ${binaryInfo.binaryByteSize} bytes\nLogic Value: ${binaryInfo.binaryLogicValue}\nDescription: ${binaryInfo.binaryDescription.split('\n').join('\n    ')}`);
 
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
-    // Start binary download
     await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
       headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
-    }).then((res) => updateHeaders(res.headers, nonce, headers));
+    }).then((res) => {
+      handleHeaders(res.headers);
+    });
 
     const binaryDecipher = crypto.createDecipheriv('aes-128-ecb', decryptionKey, null);
 
@@ -122,7 +117,6 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
   }
 };
 
-// Command-line argument parsing and execution
 const { argv } = yargs
   .option('model', { alias: 'm', describe: 'Model', type: 'string', demandOption: true })
   .option('region', { alias: 'r', describe: 'Region', type: 'string', demandOption: true })
