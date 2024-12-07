@@ -135,4 +135,4 @@ const { argv } = yargs
   .alias('v', 'version')
   .help();
 
-main(argv.model, argv.region, argv.imei);
+main(argv.region, argv.model, argv.imei);
