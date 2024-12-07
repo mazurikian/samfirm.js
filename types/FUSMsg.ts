@@ -3,7 +3,6 @@ export interface FUSMsg {
     FUSHdr: {
       ProtoVer: string;
     };
-
     FUSBody: {
       Put: {
         ACCESS_MODE?: {
