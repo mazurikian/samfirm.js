@@ -146,7 +146,14 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
           })
           .pipe(fs.createWriteStream(path.join(outputFolder, binaryInfo.binaryFilename)))
           .on('finish', () => {
-            if (downloadedSize === binaryInfo.binaryByteSize) process.exit();
+            if (downloadedSize === binaryInfo.binaryByteSize) {
+              // Renombrar archivo de .zip.enc4 a .zip después de desencriptado
+              const originalFilePath = path.join(outputFolder, binaryInfo.binaryFilename);
+              const newFilePath = path.join(outputFolder, `${path.basename(binaryInfo.binaryFilename, '.enc4')}.zip`);
+              fs.renameSync(originalFilePath, newFilePath);
+              console.log(`Archivo renombrado a: ${newFilePath}`);
+              process.exit();
+            }
           });
       });
   } catch (error) {
