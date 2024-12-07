@@ -149,7 +149,7 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
             if (downloadedSize === binaryInfo.binaryByteSize) {
               // Renombrar archivo de .zip.enc4 a .zip después de desencriptado
               const originalFilePath = path.join(outputFolder, binaryInfo.binaryFilename);
-              const newFilePath = path.join(outputFolder, `${path.basename(binaryInfo.binaryFilename, '.enc4')}.zip`);
+              const newFilePath = path.join(outputFolder, `${path.basename(binaryInfo.binaryFilename, '.enc4')}`);
               fs.renameSync(originalFilePath, newFilePath);
               console.log(`Archivo renombrado a: ${newFilePath}`);
               process.exit();
