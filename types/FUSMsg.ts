@@ -1,44 +1,40 @@
-// Definición de la interfaz FUSMsg
 export interface FUSMsg {
   FUSMsg: {
-    // Cabecera del mensaje
     FUSHdr: {
-      ProtoVer: string; // Versión del protocolo
+      ProtoVer: string;
     };
 
-    // Cuerpo del mensaje
     FUSBody: {
       Put: {
-        // Propiedades opcionales que se pueden incluir en el cuerpo del mensaje
         ACCESS_MODE?: {
-          Data: number; // Modo de acceso
+          Data: number;
         };
         BINARY_FILE_NAME?: {
-          Data: string; // Nombre del archivo binario
+          Data: string;
         };
         BINARY_NATURE?: {
-          Data: number; // Naturaleza del binario
+          Data: number;
         };
         CLIENT_PRODUCT?: {
-          Data: string; // Producto cliente
+          Data: string;
         };
         CLIENT_VERSION?: {
-          Data: string; // Versión del cliente
+          Data: string;
         };
         DEVICE_IMEI_PUSH?: {
-          Data: string; // IMEI del dispositivo
+          Data: string;
         };
         DEVICE_FW_VERSION?: {
-          Data: string; // Versión del firmware del dispositivo
+          Data: string;
         };
         DEVICE_LOCAL_CODE?: {
-          Data: string; // Código regional del dispositivo
+          Data: string;
         };
         DEVICE_MODEL_NAME?: {
-          Data: string; // Nombre del modelo del dispositivo
+          Data: string;
         };
         LOGIC_CHECK?: {
-          Data: string; // Verificación lógica
+          Data: string;
         };
       };
     };
