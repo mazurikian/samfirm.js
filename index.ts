@@ -15,9 +15,14 @@ import { version as packageVersion } from './package.json';
 
 type FirmwareVersion = { pda: string; csc: string; modem: string };
 
-const getLatestVersion = async (region: string, model: string): Promise<FirmwareVersion> => {
+const getLatestVersion = async (
+  region: string,
+  model: string
+): Promise<FirmwareVersion> => {
   try {
-    const response = await axios.get(`https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`);
+    const response = await axios.get(
+      `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`
+    );
     const parsedData = xmlParse(response.data);
     const [pda, csc, modem] = parsedData.versioninfo.firmware.version.latest.split('/');
     return { pda, csc, modem: modem || 'N/A' };
@@ -43,74 +48,113 @@ const main = async (region: string, model: string, imei: string): Promise<void> 
         headers.Authorization = Authorization;
       }
 
-      const sessionID = responseHeaders['set-cookie']?.find((cookie: string) => cookie.startsWith('JSESSIONID'))?.split(';')[0];
+      const sessionID = responseHeaders['set-cookie']
+        ?.find((cookie: string) => cookie.startsWith('JSESSIONID'))
+        ?.split(';')[0];
       if (sessionID) {
         headers.Cookie = sessionID;
       }
     };
 
-    await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do`, '', {
-      headers: {
-        Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
-        'User-Agent': 'Kies2.0_FUS',
-        Accept: 'application/xml',
-      },
-    }).then((res) => {
-      handleHeaders(res.headers);
-    });
+    await axios
+      .post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do`, '', {
+        headers: {
+          Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
+          'User-Agent': 'Kies2.0_FUS',
+          Accept: 'application/xml',
+        },
+      })
+      .then((res) => {
+        handleHeaders(res.headers);
+      });
 
-    const binaryInfo = await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted), {
-      headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
-    }).then((res) => {
-      handleHeaders(res.headers);
-      const parsedInfo = xmlParse(res.data);
-      return {
-        binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
-        binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
-        binaryFilename: parsedInfo.FUSMsg.FUSBody.Put.BINARY_NAME.Data,
-        binaryLogicValue: parsedInfo.FUSMsg.FUSBody.Put.LOGIC_VALUE_FACTORY.Data,
-        binaryModelPath: parsedInfo.FUSMsg.FUSBody.Put.MODEL_PATH.Data,
-        binaryOSVersion: parsedInfo.FUSMsg.FUSBody.Put.CURRENT_OS_VERSION.Data,
-        binaryVersion: parsedInfo.FUSMsg.FUSBody.Results.LATEST_FW_VERSION.Data,
-      };
-    });
+    const binaryInfo = await axios
+      .post(
+        `https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do`,
+        getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonce.decrypted),
+        {
+          headers: {
+            ...headers,
+            Accept: 'application/xml',
+            'Content-Type': 'application/xml',
+          },
+        }
+      )
+      .then((res) => {
+        handleHeaders(res.headers);
+        const parsedInfo = xmlParse(res.data);
+        return {
+          binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
+          binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
+          binaryFilename: parsedInfo.FUSMsg.FUSBody.Put.BINARY_NAME.Data,
+          binaryLogicValue: parsedInfo.FUSMsg.FUSBody.Put.LOGIC_VALUE_FACTORY.Data,
+          binaryModelPath: parsedInfo.FUSMsg.FUSBody.Put.MODEL_PATH.Data,
+          binaryOSVersion: parsedInfo.FUSMsg.FUSBody.Put.CURRENT_OS_VERSION.Data,
+          binaryVersion: parsedInfo.FUSMsg.FUSBody.Results.LATEST_FW_VERSION.Data,
+        };
+      });
 
-    console.log(`\nOS: ${binaryInfo.binaryOSVersion}\nFilename: ${binaryInfo.binaryFilename}\nSize: ${binaryInfo.binaryByteSize} bytes\nLogic Value: ${binaryInfo.binaryLogicValue}\nDescription: ${binaryInfo.binaryDescription.split('\n').join('\n    ')}`);
+    console.log(
+      `\nOS: ${binaryInfo.binaryOSVersion}\nFilename: ${binaryInfo.binaryFilename}\nSize: ${binaryInfo.binaryByteSize} bytes\nLogic Value: ${binaryInfo.binaryLogicValue}\nDescription: ${binaryInfo.binaryDescription
+        .split('\n')
+        .join('\n    ')}`
+    );
 
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
-    await axios.post(`https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted), {
-      headers: { ...headers, Accept: 'application/xml', 'Content-Type': 'application/xml' },
-    }).then((res) => {
-      handleHeaders(res.headers);
-    });
+    await axios
+      .post(
+        `https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do`,
+        getBinaryInitMsg(binaryInfo.binaryFilename, nonce.decrypted),
+        {
+          headers: {
+            ...headers,
+            Accept: 'application/xml',
+            'Content-Type': 'application/xml',
+          },
+        }
+      )
+      .then((res) => {
+        handleHeaders(res.headers);
+      });
 
     const binaryDecipher = crypto.createDecipheriv('aes-128-ecb', decryptionKey, null);
 
-    await axios.get(`http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`, {
-      headers,
-      responseType: 'stream',
-    }).then((res: AxiosResponse) => {
-      const outputFolder = `${process.cwd()}/${model}_${region}/`;
-      fs.mkdirSync(outputFolder, { recursive: true });
+    await axios
+      .get(
+        `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
+        {
+          headers,
+          responseType: 'stream',
+        }
+      )
+      .then((res: AxiosResponse) => {
+        const outputFolder = `${process.cwd()}/${model}_${region}/`;
+        fs.mkdirSync(outputFolder, { recursive: true });
 
-      let downloadedSize = 0;
-      let currentFile = '';
-      const progressBar = new cliProgress.SingleBar({ format: '{bar} {percentage}% | {value}/{total} | {file}', barCompleteChar: '\u2588', barIncompleteChar: '\u2591' });
-      progressBar.start(binaryInfo.binaryByteSize, downloadedSize);
+        let downloadedSize = 0;
+        let currentFile = '';
+        const progressBar = new cliProgress.SingleBar(
+          { format: '{bar} {percentage}% | {value}/{total} | {file}', barCompleteChar: '\u2588', barIncompleteChar: '\u2591' },
+          {}
+        );
+        progressBar.start(binaryInfo.binaryByteSize, downloadedSize);
 
-      res.data.on('data', (buffer: Buffer) => {
-        downloadedSize += buffer.length;
-        progressBar.update(downloadedSize, { file: currentFile });
-      }).pipe(binaryDecipher).pipe(unzip.Parse()).on('entry', (entry) => {
-        currentFile = `${entry.path.slice(0, 18)}...`;
-        progressBar.update(downloadedSize, { file: currentFile });
-        entry.pipe(fs.createWriteStream(path.join(outputFolder, entry.path))).on('finish', () => {
-          if (downloadedSize === binaryInfo.binaryByteSize) process.exit();
-        });
+        res.data
+          .on('data', (buffer: Buffer) => {
+            downloadedSize += buffer.length;
+            progressBar.update(downloadedSize, { file: currentFile });
+          })
+          .pipe(binaryDecipher)
+          .pipe(unzip.Parse())
+          .on('entry', (entry) => {
+            currentFile = `${entry.path.slice(0, 18)}...`;
+            progressBar.update(downloadedSize, { file: currentFile });
+            entry.pipe(fs.createWriteStream(path.join(outputFolder, entry.path))).on('finish', () => {
+              if (downloadedSize === binaryInfo.binaryByteSize) process.exit();
+            });
+          });
       });
-    });
-
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
