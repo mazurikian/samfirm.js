@@ -9,40 +9,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Clona el código fuente
       - name: Check out code
         uses: actions/checkout@v4.2.2
 
+      # Configura Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4.1.0
         with:
           node-version: "lts/*"
           check-latest: true
 
+      # Instala dependencias
       - name: Install updated dependencies
         run: npm install
 
+      # Compila el proyecto (si usas TypeScript o tienes un script de build)
       - name: Compile TypeScript
         run: npm run build
 
+      # Crea un Release en GitHub
       - name: Create Release on GitHub
         id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
           VERSION="v$(date +'%Y%m%d%H%M%S')"
-          RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"tag_name": "'$VERSION'", "name": "'$VERSION'", "body": "Release description", "draft": false, "prerelease": false}' \
+          RESPONSE=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -d "{\"tag_name\": \"$VERSION\", \"name\": \"$VERSION\", \"body\": \"Release description\", \"draft\": false, \"prerelease\": false}" \
             https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
           echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
 
+      # Subir artefactos al release
       - name: Upload build artifacts to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO_NAME=$(basename ${GITHUB_REPOSITORY})
           RELEASE_ID=${{ steps.create_release.outputs.release_id }}
           FILE_PATH="./dist/index.js"
 
-          tar -czvf samfirm.tar.gz -C ./dist index.js
+          # Verifica que el archivo existe
+          if [ ! -f "$FILE_PATH" ]; then
+            echo "Error: $FILE_PATH no existe."
+            exit 1
+          fi
 
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          # Sube el artefacto al release
+          curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
-            --data-binary @samfirm.tar.gz \
-            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=samfirm.tar.gz"
+            --data-binary ./dist/index.js \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=index.js"
