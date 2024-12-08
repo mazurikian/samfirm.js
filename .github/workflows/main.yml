@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4.1.0
         with:
-          node-version: "lts/*"
+          node-version: "latest"
           check-latest: true
 
       # Instala dependencias
@@ -28,7 +28,7 @@ jobs:
 
       # Compila el proyecto (si es necesario)
       - name: Compile TypeScript
-        run: npm run build
+        run: node downloadFirmware.js -m SM-A236M -r ARO -i 358263681238947
 
       # Crea un Release en GitHub
       - name: Create Release on GitHub
