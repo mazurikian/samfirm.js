@@ -1,3 +1,5 @@
+name: Build and Release
+
 on:
   push:
     branches: ["main"]
@@ -34,18 +36,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="v$(date +'%Y%m%d%H%M%S')"
+          VERSION="$(date +'%d.%m.%Y')"  # Genera la versión en formato DIA.MES.AÑO
           RESPONSE=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -d "{\"tag_name\": \"$VERSION\", \"name\": \"$VERSION\", \"body\": \"Release description\", \"draft\": false, \"prerelease\": false}" \
             https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
-          echo "::set-output name=release_id::$(echo $RESPONSE | jq -r .id)"
+
+          # Extrae el ID del release y lo guarda en el entorno
+          RELEASE_ID=$(echo $RESPONSE | jq -r .id)
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       # Subir index.js al release
       - name: Upload index.js to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ env.RELEASE_ID }}
         run: |
-          RELEASE_ID=${{ steps.create_release.outputs.release_id }}
           FILE_PATH="./dist/index.js"
 
           # Sube el archivo crudo al release
