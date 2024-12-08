@@ -55,7 +55,6 @@ const downloadFirmware = async (
     const nonce = { encrypted: "", decrypted: "" };
     const headers: Record<string, string> = { "User-Agent": "Kies2.0_FUS" };
 
-    // Handling headers for authentication
     const handleHeaders = (responseHeaders: Record<string, string>) => {
       if (responseHeaders.nonce) {
         const { Authorization, nonce: newNonce } =
@@ -84,7 +83,6 @@ const downloadFirmware = async (
       )
       .then((res) => handleHeaders(res.headers));
 
-    // Fetch Binary Info
     const binaryInfo = await axios
       .post(
         "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do",
@@ -149,7 +147,6 @@ const downloadFirmware = async (
       null,
     );
 
-    // Download and save the binary file
     await axios
       .get(
         `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
@@ -162,7 +159,7 @@ const downloadFirmware = async (
         let downloadedSize = 0;
         const progressBar = new cliProgress.SingleBar(
           {
-            format: "{bar} {percentage}% | {value}/{total} | {file}",
+            format: "{bar} {percentage}% | {value}/{total} bytes",
             barCompleteChar: "\u2588",
             barIncompleteChar: "\u2591",
           },
@@ -175,22 +172,23 @@ const downloadFirmware = async (
             downloadedSize += buffer.length;
             progressBar.update(downloadedSize);
           })
+          .pipe(binaryDecipher)
           .pipe(
             fs.createWriteStream(
-              path.join(outputFolder, binaryInfo.binaryFilename),
+              path.join(
+                outputFolder,
+                binaryInfo.binaryFilename.replace(".enc4", ""),
+              ),
             ),
           )
           .on("finish", () => {
-            const originalFilePath = path.join(
-              outputFolder,
-              binaryInfo.binaryFilename,
+            progressBar.stop();
+            console.log(
+              `Archivo desencriptado y guardado como: ${path.join(
+                outputFolder,
+                binaryInfo.binaryFilename.replace(".enc4", ""),
+              )}`,
             );
-            const newFilePath = path.join(
-              outputFolder,
-              `${path.basename(binaryInfo.binaryFilename, ".enc4")}`,
-            );
-            fs.renameSync(originalFilePath, newFilePath);
-            console.log(`File renamed to: ${newFilePath}`);
           });
       });
   } catch (error) {
