@@ -1,30 +1,14 @@
 {
-  "name": "samfirm",
-  "version": "1.0.0",
-  "description": "Script para descargar y manejar actualizaciones de firmware",
-  "scripts": {
-    "build": "ncc build index.ts -m -t",
-    "format": "prettier --write .",
-    "format-check": "prettier --check ."
-  },
   "dependencies": {
     "axios": "^1.7.9",
-    "cli-progress": "^3.8.2",
+    "cli-progress": "^3.12.0",
     "fast-xml-parser": "^4.5.0",
     "unzip-stream": "^0.3.4",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
-    "@types/cli-progress": "^3.11.6",
-    "@types/node": "^22.10.1",
-    "@types/unzip-stream": "^0.3.4",
-    "@types/yargs": "^17.0.33",
-    "@vercel/ncc": "^0.38.3",
     "eslint": "^9.16.0",
-    "globals": "^15.13.0",
-    "prettier": "^3.4.2",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.17.0"
+    "globals": "^15.13.0"
   }
 }
