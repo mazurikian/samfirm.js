@@ -87,7 +87,7 @@ const downloadFirmware = async (
           },
         },
       )
-      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders)); // Type assertion here
+      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders));
 
     const binaryInfo = await axios
       .post(
@@ -108,7 +108,7 @@ const downloadFirmware = async (
         },
       )
       .then((res) => {
-        handleHeaders(res.headers as AxiosResponseHeaders); // Type assertion here
+        handleHeaders(res.headers as AxiosResponseHeaders);
         const parsedInfo = xmlParser.parse(res.data);
         return {
           binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
@@ -145,7 +145,7 @@ const downloadFirmware = async (
           },
         },
       )
-      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders)); // Type assertion here
+      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders));
 
     const binaryDecipher = crypto.createDecipheriv(
       "aes-128-ecb",
