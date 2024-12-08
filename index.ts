@@ -7,6 +7,7 @@ import path from "path";
 import cliProgress from "cli-progress";
 import yargs from "yargs";
 import { XMLParser } from "fast-xml-parser";
+import unzip from "unzip-stream"; // Agregado para descomprimir
 
 import { handleAuthRotation } from "./utils/authUtils";
 import {
@@ -149,7 +150,7 @@ const downloadFirmware = async (
       null,
     );
 
-    // Download and save the binary file
+    // Download and decrypt + unzip the binary file
     await axios
       .get(
         `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
@@ -160,6 +161,7 @@ const downloadFirmware = async (
         fs.mkdirSync(outputFolder, { recursive: true });
 
         let downloadedSize = 0;
+        let currentFile = "";
         const progressBar = new cliProgress.SingleBar(
           {
             format: "{bar} {percentage}% | {value}/{total} | {file}",
@@ -170,27 +172,23 @@ const downloadFirmware = async (
         );
         progressBar.start(binaryInfo.binaryByteSize, downloadedSize);
 
-        res.data
+        return res.data
           .on("data", (buffer: Buffer) => {
             downloadedSize += buffer.length;
-            progressBar.update(downloadedSize);
+            progressBar.update(downloadedSize, { file: currentFile });
           })
-          .pipe(
-            fs.createWriteStream(
-              path.join(outputFolder, binaryInfo.binaryFilename),
-            ),
-          )
-          .on("finish", () => {
-            const originalFilePath = path.join(
-              outputFolder,
-              binaryInfo.binaryFilename,
-            );
-            const newFilePath = path.join(
-              outputFolder,
-              `${path.basename(binaryInfo.binaryFilename, ".enc4")}`,
-            );
-            fs.renameSync(originalFilePath, newFilePath);
-            console.log(`File renamed to: ${newFilePath}`);
+          .pipe(binaryDecipher) // Desencriptar
+          .pipe(unzip.Parse()) // Descomprimir
+          .on("entry", (entry) => {
+            currentFile = `${entry.path.slice(0, 18)}...`;
+            progressBar.update(downloadedSize, { file: currentFile });
+            entry
+              .pipe(fs.createWriteStream(path.join(outputFolder, entry.path)))
+              .on("finish", () => {
+                if (downloadedSize === binaryInfo.binaryByteSize) {
+                  process.exit();
+                }
+              });
           });
       });
   } catch (error) {
