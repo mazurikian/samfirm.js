@@ -5,7 +5,7 @@ const parser = new XMLBuilder({});
 
 const getLogicCheck = (input: string, nonce: string): string => {
   return Array.from(nonce)
-    .map((char, i) => input[char.charCodeAt(0) & 0xf])
+    .map(char => input[char.charCodeAt(0) & 0xf])
     .join("");
 };
 
