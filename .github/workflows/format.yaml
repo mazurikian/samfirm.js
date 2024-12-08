@@ -1,4 +1,4 @@
-name: Format Code
+name: Format Code and Push Changes
 
 on:
   push:
@@ -12,26 +12,34 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
+      # Paso 1: Checkout del código
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
+      # Paso 2: Configurar Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '14'
 
+      # Paso 3: Instalar dependencias (incluyendo Prettier)
       - name: Install dependencies
         run: npm install
 
+      # Paso 4: Ejecutar Prettier para formatear los archivos
       - name: Run Prettier
         run: npm run format
 
-      - name: Commit and push formatted code
+      # Paso 5: Hacer commit de los cambios formateados (si los hay)
+      - name: Commit changes if any
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
           git add .
-          git commit -m "Format code with Prettier"
-          git push
+          git diff --cached --exit-code || git commit -m "chore: format code with Prettier"
+      
+      # Paso 6: Hacer push de los cambios al repositorio
+      - name: Push changes
+        run: git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
