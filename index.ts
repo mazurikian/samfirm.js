@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosResponse, AxiosResponseHeaders } from "axios";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import cliProgress from "cli-progress";
 import yargs from "yargs";
 import { XMLParser } from "fast-xml-parser";
-import unzip from "unzip-stream"; // Agregado para descomprimir
+import unzip from "unzip-stream";
 
 import { handleAuthRotation } from "./utils/authUtils";
 import {
@@ -15,7 +15,6 @@ import {
   getBinaryInitMsg,
   getDecryptionKey,
 } from "./utils/msgUtils";
-import { version as packageVersion } from "./package.json";
 
 type FirmwareVersion = { pda: string; csc: string; modem: string };
 
@@ -33,8 +32,11 @@ const getLatestVersion = async (
     const [pda, csc, modem] =
       parsedData.versioninfo.firmware.version.latest.split("/");
     return { pda, csc, modem: modem || "N/A" };
-  } catch (error) {
-    throw new Error(`Failed to fetch latest version: ${error.message}`);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch latest version: ${error.message}`);
+    }
+    throw new Error("Unknown error occurred");
   }
 };
 
@@ -56,18 +58,20 @@ const downloadFirmware = async (
     const nonce = { encrypted: "", decrypted: "" };
     const headers: Record<string, string> = { "User-Agent": "Kies2.0_FUS" };
 
-    // Handling headers for authentication
-    const handleHeaders = (responseHeaders: Record<string, string>) => {
+    const handleHeaders = (responseHeaders: AxiosResponseHeaders) => {
       if (responseHeaders.nonce) {
         const { Authorization, nonce: newNonce } =
           handleAuthRotation(responseHeaders);
         Object.assign(nonce, newNonce);
         headers.Authorization = Authorization;
       }
-      const sessionID = responseHeaders["set-cookie"]
-        ?.find((cookie) => cookie.startsWith("JSESSIONID"))
-        ?.split(";")[0];
-      if (sessionID) headers.Cookie = sessionID;
+      const cookies = responseHeaders["set-cookie"];
+      if (Array.isArray(cookies)) {
+        const sessionID = cookies
+          .find((cookie: string) => cookie.startsWith("JSESSIONID"))
+          ?.split(";")[0];
+        if (sessionID) headers.Cookie = sessionID;
+      }
     };
 
     await axios
@@ -83,9 +87,8 @@ const downloadFirmware = async (
           },
         },
       )
-      .then((res) => handleHeaders(res.headers));
+      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders)); // Type assertion here
 
-    // Fetch Binary Info
     const binaryInfo = await axios
       .post(
         "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do",
@@ -105,7 +108,7 @@ const downloadFirmware = async (
         },
       )
       .then((res) => {
-        handleHeaders(res.headers);
+        handleHeaders(res.headers as AxiosResponseHeaders); // Type assertion here
         const parsedInfo = xmlParser.parse(res.data);
         return {
           binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
@@ -142,7 +145,7 @@ const downloadFirmware = async (
           },
         },
       )
-      .then((res) => handleHeaders(res.headers));
+      .then((res) => handleHeaders(res.headers as AxiosResponseHeaders)); // Type assertion here
 
     const binaryDecipher = crypto.createDecipheriv(
       "aes-128-ecb",
@@ -150,7 +153,6 @@ const downloadFirmware = async (
       null,
     );
 
-    // Download and decrypt + unzip the binary file
     await axios
       .get(
         `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
@@ -168,7 +170,7 @@ const downloadFirmware = async (
             barCompleteChar: "\u2588",
             barIncompleteChar: "\u2591",
           },
-          {},
+          cliProgress.Presets.shades_classic,
         );
         progressBar.start(binaryInfo.binaryByteSize, downloadedSize);
 
@@ -177,9 +179,9 @@ const downloadFirmware = async (
             downloadedSize += buffer.length;
             progressBar.update(downloadedSize, { file: currentFile });
           })
-          .pipe(binaryDecipher) // Desencriptar
-          .pipe(unzip.Parse()) // Descomprimir
-          .on("entry", (entry) => {
+          .pipe(binaryDecipher)
+          .pipe(unzip.Parse())
+          .on("entry", (entry: unzip.Entry) => {
             currentFile = `${entry.path.slice(0, 18)}...`;
             progressBar.update(downloadedSize, { file: currentFile });
             entry
@@ -191,8 +193,12 @@ const downloadFirmware = async (
               });
           });
       });
-  } catch (error) {
-    console.error("Error:", error.message);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("Error:", error.message);
+    } else {
+      console.error("Unknown error occurred");
+    }
     process.exit(1);
   }
 };
@@ -216,8 +222,6 @@ const { argv } = yargs
     type: "string",
     demandOption: true,
   })
-  .version(packageVersion)
-  .alias("v", "version")
-  .help();
+  .help() as { argv: { model: string; region: string; imei: string } };
 
 downloadFirmware(argv.region, argv.model, argv.imei);
