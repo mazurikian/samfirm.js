@@ -1,26 +1,14 @@
 import crypto from "crypto";
 import { XMLBuilder } from "fast-xml-parser";
-import type { FUSMsg } from "../types/FUSMsg";
 
 const parser = new XMLBuilder({});
 
 const getLogicCheck = (input: string, nonce: string): string => {
-  let out = "";
-  for (let i = 0; i < nonce.length; i++) {
-    const char = nonce.charCodeAt(i);
-    out += input[char & 0xf];
-  }
-  return out;
+  return Array.from(nonce).map((char, i) => input[char.charCodeAt(0) & 0xf]).join('');
 };
 
-export const getBinaryInformMsg = (
-  version: string,
-  region: string,
-  model: string,
-  imei: string,
-  nonce: string,
-): string => {
-  const msg: FUSMsg = {
+export const getBinaryInformMsg = (version: string, region: string, model: string, imei: string, nonce: string): string => {
+  const msg = {
     FUSMsg: {
       FUSHdr: { ProtoVer: "1.0" },
       FUSBody: {
@@ -42,15 +30,13 @@ export const getBinaryInformMsg = (
 };
 
 export const getBinaryInitMsg = (filename: string, nonce: string): string => {
-  const msg: FUSMsg = {
+  const msg = {
     FUSMsg: {
       FUSHdr: { ProtoVer: "1.0" },
       FUSBody: {
         Put: {
           BINARY_FILE_NAME: { Data: filename },
-          LOGIC_CHECK: {
-            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce),
-          },
+          LOGIC_CHECK: { Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce) },
         },
       },
     },
@@ -58,12 +44,6 @@ export const getBinaryInitMsg = (filename: string, nonce: string): string => {
   return parser.build(msg);
 };
 
-export const getDecryptionKey = (
-  version: string,
-  logicalValue: string,
-): Buffer => {
-  return crypto
-    .createHash("md5")
-    .update(getLogicCheck(version, logicalValue))
-    .digest();
+export const getDecryptionKey = (version: string, logicalValue: string): Buffer => {
+  return crypto.createHash("md5").update(getLogicCheck(version, logicalValue)).digest();
 };
