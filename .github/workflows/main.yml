@@ -21,7 +21,7 @@ jobs:
 
       # Instala dependencias
       - name: Install updated dependencies
-        run: npm install
+        run: npm --trace-warnings install 
 
       # Compila el proyecto (si es necesario)
       - name: Compile TypeScript
