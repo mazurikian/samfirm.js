@@ -56,7 +56,7 @@ const updateHeaders = (responseHeaders, headers, nonce) => {
 const getLatestFirmwareVersion = async (region, model) => {
   try {
     const response = await axios.get(
-      `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`,
+      `http://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`,
     );
     return parseLatestFirmwareVersion(response.data); // Parsing the firmware version from XML response
   } catch (error) {
