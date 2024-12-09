@@ -1,28 +1,3 @@
-document.getElementById('download-form').addEventListener('submit', function (event) {
-    event.preventDefault();
-
-    const imei = document.getElementById('imei').value;
-    const model = document.getElementById('model').value;
-    const region = document.getElementById('region').value;
-    
-    // Iniciar el proceso de descarga
-    downloadFirmware(region, model, imei);
-});
-
-const displayDebugInfo = (message) => {
-    const debugDiv = document.getElementById('debug-output');
-    const debugText = document.getElementById('debug-text');
-    debugText.textContent += `${message}\n`;
-    debugDiv.style.display = 'block'; // Muestra la sección de depuración
-};
-
-const displayOutput = (data) => {
-    document.getElementById('output').innerHTML = `
-        <p>Firmware Information:</p>
-        <pre>${JSON.stringify(data, null, 2)}</pre>
-    `;
-};
-
 const downloadFirmware = async (region, model, imei) => {
     try {
         displayDebugInfo(`Fetching firmware for model: ${model}, region: ${region}, IMEI: ${imei}`);
@@ -36,6 +11,17 @@ const downloadFirmware = async (region, model, imei) => {
         displayOutput(firmwareData);
     } catch (error) {
         displayDebugInfo(`Error: ${error.message}`);
+        if (error.response) {
+            // Error de la respuesta HTTP (404, 500, etc.)
+            displayDebugInfo(`Response status: ${error.response.status}`);
+            displayDebugInfo(`Response data: ${JSON.stringify(error.response.data)}`);
+        } else if (error.request) {
+            // La solicitud fue hecha pero no hubo respuesta
+            displayDebugInfo(`Request made but no response received: ${JSON.stringify(error.request)}`);
+        } else {
+            // Otros errores
+            displayDebugInfo(`Error setting up the request: ${error.message}`);
+        }
         document.getElementById('output').innerText = `Error: ${error.message}`;
     }
 };
