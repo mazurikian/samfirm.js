@@ -112,8 +112,16 @@ const downloadFirmware = async (region, model, imei) => {
         };
       });
 
+    // Log detallado de la información binaria
     console.log(
-      `Binary Information: OS - ${binaryInfo.binaryOSVersion}, Filename - ${binaryInfo.binaryFilename}`,
+      `Binary Information:
+      - OS Version: ${binaryInfo.binaryOSVersion}
+      - Filename: ${binaryInfo.binaryFilename}
+      - Byte Size: ${binaryInfo.binaryByteSize}
+      - Description: ${binaryInfo.binaryDescription}
+      - Logic Value: ${binaryInfo.binaryLogicValue}
+      - Model Path: ${binaryInfo.binaryModelPath}
+      - Version: ${binaryInfo.binaryVersion}`
     );
 
     const decryptionKey = getDecryptionKey(
