@@ -4,7 +4,7 @@ const AUTH_KEY = "9u7qab84rpc16gvk"; // Key used for generating the authorizatio
 const NONCE_KEY = "vicopx7dqu06emacgpnpy8j8zwhduwlh"; // Key used for decrypting the nonce
 
 /**
- * Decrypt the encrypted nonce using AES-256-CBC algorithm and a specific nonce key.
+ * STEP 1: Decrypt the encrypted nonce using AES-256-CBC algorithm.
  *
  * @param {string} nonceEncrypted - The encrypted nonce in base64 format.
  * @returns {string} - The decrypted nonce in UTF-8 format.
@@ -22,7 +22,7 @@ const decryptNonce = (nonceEncrypted) => {
 };
 
 /**
- * Generate an authorization header value using the decrypted nonce.
+ * STEP 2: Generate an authorization header using the decrypted nonce.
  *
  * @param {string} nonceDecrypted - The decrypted nonce value.
  * @returns {string} - The generated authorization header in base64 format.
@@ -47,7 +47,7 @@ const getAuthorization = (nonceDecrypted) => {
 };
 
 /**
- * Handle the rotation of authorization by decrypting the nonce and generating the new authorization header.
+ * STEP 3: Handle authorization rotation by decrypting the nonce and generating the new header.
  *
  * @param {object} responseHeaders - The response headers from the server.
  * @returns {object} - An object containing the Authorization header and the decrypted nonce.

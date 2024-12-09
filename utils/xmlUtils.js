@@ -3,15 +3,14 @@ const { XMLParser } = require("fast-xml-parser");
 const xmlParser = new XMLParser();
 
 /**
- * Parse the binary information from the XML response.
+ * STEP 1: Parse binary information from XML response.
  *
  * @param {string} data - XML response data.
  * @returns {object} - Parsed binary information.
  */
 const parseBinaryInfo = (data) => {
-  const parsedInfo = xmlParser.parse(data); // Parse the XML data
+  const parsedInfo = xmlParser.parse(data);
 
-  // Extract and return the relevant information from the parsed XML
   return {
     binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data,
     binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data,
@@ -24,7 +23,7 @@ const parseBinaryInfo = (data) => {
 };
 
 /**
- * Parse the latest firmware version from the XML response.
+ * STEP 2: Parse the latest firmware version from XML response.
  *
  * @param {string} data - XML response data.
  * @returns {object} - Parsed version information.
