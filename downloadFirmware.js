@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 const axios = require("axios");
+const cliProgress = require("cli-progress");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const cliProgress = require("cli-progress");
-const yargs = require("yargs");
 const { XMLParser } = require("fast-xml-parser");
+const yargs = require("yargs");
 const unzip = require("unzip-stream");
 
 const { handleAuthRotation } = require("./utils/authUtils");
@@ -17,20 +17,6 @@ const {
 } = require("./utils/msgUtils");
 
 const xmlParser = new XMLParser();
-
-const getLatestVersion = async (region, model) => {
-  try {
-    const response = await axios.get(
-      `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`,
-    );
-    const parsedData = xmlParser.parse(response.data);
-    const [pda, csc, modem] =
-      parsedData.versioninfo.firmware.version.latest.split("/");
-    return { pda, csc, modem: modem || "N/A" };
-  } catch (error) {
-    throw new Error(`Failed to fetch latest version: ${error.message}`);
-  }
-};
 
 const downloadFirmware = async (region, model, imei) => {
   try {
@@ -187,7 +173,27 @@ const downloadFirmware = async (region, model, imei) => {
   }
 };
 
+const getLatestVersion = async (region, model) => {
+  try {
+    const response = await axios.get(
+      `https://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`,
+    );
+    const parsedData = xmlParser.parse(response.data);
+    const [pda, csc, modem] =
+      parsedData.versioninfo.firmware.version.latest.split("/");
+    return { pda, csc, modem: modem || "N/A" };
+  } catch (error) {
+    throw new Error(`Failed to fetch latest version: ${error.message}`);
+  }
+};
+
 const { argv } = yargs
+  .option("imei", {
+    alias: "i",
+    describe: "IMEI/Serial Number",
+    type: "string",
+    demandOption: true,
+  })
   .option("model", {
     alias: "m",
     describe: "Model",
@@ -197,12 +203,6 @@ const { argv } = yargs
   .option("region", {
     alias: "r",
     describe: "Region",
-    type: "string",
-    demandOption: true,
-  })
-  .option("imei", {
-    alias: "i",
-    describe: "IMEI/Serial Number",
     type: "string",
     demandOption: true,
   })
