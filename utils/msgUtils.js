@@ -3,10 +3,21 @@ const { XMLBuilder } = require("fast-xml-parser");
 
 const parser = new XMLBuilder({});
 
-const getLogicCheck = (input, nonce) => {
-  return Array.from(nonce)
-    .map((char) => input[char.charCodeAt(0) & 0xf])
-    .join("");
+const getBinaryInitMsg = (filename, nonce) => {
+  const msg = {
+    FUSMsg: {
+      FUSHdr: { ProtoVer: "1.0" },
+      FUSBody: {
+        Put: {
+          BINARY_FILE_NAME: { Data: filename },
+          LOGIC_CHECK: {
+            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce),
+          },
+        },
+      },
+    },
+  };
+  return parser.build(msg);
 };
 
 const getBinaryInformMsg = (version, region, model, imei, nonce) => {
@@ -31,28 +42,17 @@ const getBinaryInformMsg = (version, region, model, imei, nonce) => {
   return parser.build(msg);
 };
 
-const getBinaryInitMsg = (filename, nonce) => {
-  const msg = {
-    FUSMsg: {
-      FUSHdr: { ProtoVer: "1.0" },
-      FUSBody: {
-        Put: {
-          BINARY_FILE_NAME: { Data: filename },
-          LOGIC_CHECK: {
-            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce),
-          },
-        },
-      },
-    },
-  };
-  return parser.build(msg);
-};
-
 const getDecryptionKey = (version, logicalValue) => {
   return crypto
     .createHash("md5")
     .update(getLogicCheck(version, logicalValue))
     .digest();
+};
+
+const getLogicCheck = (input, nonce) => {
+  return Array.from(nonce)
+    .map((char) => input[char.charCodeAt(0) & 0xf])
+    .join("");
 };
 
 module.exports = { getBinaryInformMsg, getBinaryInitMsg, getDecryptionKey };
