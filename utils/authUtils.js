@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 
-const NONCE_KEY = "vicopx7dqu06emacgpnpy8j8zwhduwlh";
 const AUTH_KEY = "9u7qab84rpc16gvk";
+const NONCE_KEY = "vicopx7dqu06emacgpnpy8j8zwhduwlh";
 
 const decryptNonce = (nonceEncrypted) => {
   const nonceDecipher = crypto.createDecipheriv(
