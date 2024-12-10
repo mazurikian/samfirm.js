@@ -2,12 +2,6 @@ const { XMLParser } = require("fast-xml-parser");
 
 const xmlParser = new XMLParser();
 
-/**
- * STEP 1: Parse binary information from XML response.
- *
- * @param {string} data - XML response data.
- * @returns {object} - Parsed binary information.
- */
 const parseBinaryInfo = (data) => {
   const parsedInfo = xmlParser.parse(data);
 
@@ -22,12 +16,6 @@ const parseBinaryInfo = (data) => {
   };
 };
 
-/**
- * STEP 2: Parse the latest firmware version from XML response.
- *
- * @param {string} data - XML response data.
- * @returns {object} - Parsed version information.
- */
 const parseLatestFirmwareVersion = (data) => {
   const parsedData = xmlParser.parse(data);
   const [pda, csc, modem] =
