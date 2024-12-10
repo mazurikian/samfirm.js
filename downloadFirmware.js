@@ -98,8 +98,8 @@ const downloadFirmware = async (model, region, imei) => {
     const binaryInfo = parseBinaryInfo(binaryInfoResponse.data);
 
     console.log(`Binary Information:
-      OS - ${binaryInfo.binaryOSVersion},
-      Filename - ${binaryInfo.binaryFilename}`);
+      OS: ${binaryInfo.binaryOSVersion},
+      Filename: ${binaryInfo.binaryFilename}`);
 
     const decryptionKey = getDecryptionKey(
       binaryInfo.binaryVersion,
