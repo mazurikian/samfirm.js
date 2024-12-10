@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
-// STEP 1: Import required modules
-const axios = require("axios"); // Library for making HTTP requests
-const cliProgress = require("cli-progress"); // Library for showing progress bar in the terminal
-const crypto = require("crypto"); // Crypto module for encryption and decryption
-const fs = require("fs"); // File system module for handling file operations
-const path = require("path"); // Path module for working with file and directory paths
-const yargs = require("yargs"); // Library for parsing command-line arguments
-const unzip = require("unzip-stream"); // Library for extracting zip files
+const axios = require("axios");
+const cliProgress = require("cli-progress");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const unzip = require("unzip-stream");
+const yargs = require("yargs");
 
 // STEP 2: Import utility functions from other files
 const { handleAuthRotation } = require("./utils/authUtils");
