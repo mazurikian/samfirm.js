@@ -3,13 +3,6 @@ const { XMLBuilder } = require("fast-xml-parser");
 
 const parser = new XMLBuilder({});
 
-/**
- * STEP 1: Generate a message to initialize the binary download process.
- *
- * @param {string} filename - Name of the binary file.
- * @param {string} nonce - Decrypted nonce used for logic check.
- * @returns {string} - The generated XML message.
- */
 const getBinaryInitMsg = (filename, nonce) => {
   const msg = {
     FUSMsg: {
@@ -24,19 +17,9 @@ const getBinaryInitMsg = (filename, nonce) => {
       },
     },
   };
-  return parser.build(msg); // Convert the message object to XML string
+  return parser.build(msg);
 };
 
-/**
- * STEP 2: Generate a message to request binary information.
- *
- * @param {string} version - Firmware version.
- * @param {string} region - Region code.
- * @param {string} model - Model name.
- * @param {string} imei - Device IMEI.
- * @param {string} nonce - Decrypted nonce.
- * @returns {string} - The generated XML message.
- */
 const getBinaryInformMsg = (version, region, model, imei, nonce) => {
   const msg = {
     FUSMsg: {
@@ -56,30 +39,16 @@ const getBinaryInformMsg = (version, region, model, imei, nonce) => {
       },
     },
   };
-  return parser.build(msg); // Convert the message object to XML string
+  return parser.build(msg);
 };
 
-/**
- * STEP 3: Generate a decryption key for binary decryption.
- *
- * @param {string} version - Firmware version.
- * @param {string} logicalValue - Logical value for the firmware.
- * @returns {Buffer} - Decryption key in Buffer format.
- */
 const getDecryptionKey = (version, logicalValue) => {
   return crypto
     .createHash("md5")
     .update(getLogicCheck(version, logicalValue))
-    .digest(); // Return the MD5 digest
+    .digest();
 };
 
-/**
- * STEP 4: Generate a logic check string based on input and nonce.
- *
- * @param {string} input - Input string.
- * @param {string} nonce - Decrypted nonce.
- * @returns {string} - Logic check string.
- */
 const getLogicCheck = (input, nonce) => {
   return Array.from(nonce)
     .map((char) => input[char.charCodeAt(0) & 0xf])
