@@ -20,7 +20,12 @@ const parseLatestFirmwareVersion = (data) => {
   const parsedData = xmlParser.parse(data);
   const [pda, csc, modem] =
     parsedData.versioninfo.firmware.version.latest.split("/");
-  return { pda, csc, modem: modem || "N/A" };
+
+  return {
+    pda,
+    csc,
+    modem: modem || "N/A",
+  };
 };
 
 module.exports = { parseBinaryInfo, parseLatestFirmwareVersion };
