@@ -23,7 +23,8 @@ const decryptNonce = (nonceEncrypted) => {
     NONCE_KEY,
     NONCE_KEY.slice(0, 16)
   );
-  return nonceDecipher.update(nonceEncrypted, "base64", "utf-8") + nonceDecipher.final("utf-8");
+  return nonceDecipher.update(nonceEncrypted, "base64", "utf-8") +
+         nonceDecipher.final("utf-8");
 };
 
 const getAuthorization = (nonceDecrypted) => {
@@ -36,8 +37,9 @@ const getAuthorization = (nonceDecrypted) => {
     key,
     key.slice(0, 16)
   );
-  
-  return authCipher.update(nonceDecrypted, "utf8", "base64") + authCipher.final("base64");
+
+  return authCipher.update(nonceDecrypted, "utf8", "base64") + 
+         authCipher.final("base64");
 };
 
 const handleAuthRotation = (nonceEncrypted) => {
@@ -98,9 +100,11 @@ const getBinaryMsg = (type, data, nonce) => {
   }
 };
 
-const getLogicCheck = (input, nonce) => Array.from(nonce)
-  .map((char) => input[char.charCodeAt(0) & 0xf])
-  .join("");
+const getLogicCheck = (input, nonce) => {
+  return Array.from(nonce)
+    .map((char) => input[char.charCodeAt(0) & 0xf])
+    .join("");
+};
 
 const parseBinaryInfo = (data) => {
   const parsedInfo = xmlParser.parse(data);
@@ -131,7 +135,7 @@ const parseLatestFirmwareVersion = (data) => {
   return { pda, csc, modem: modem || "N/A" };
 };
 
-const getDecryptionKey = (version, logicalValue) =>
+const getDecryptionKey = (version, logicalValue) => 
   crypto.createHash("md5")
     .update(getLogicCheck(version, logicalValue))
     .digest();
@@ -142,7 +146,7 @@ const getLatestFirmwareVersion = async (region, model) => {
     const response = await axios.get(`${VERSION_XML_URL}/${region}/${model}/version.xml`);
     return parseLatestFirmwareVersion(response.data);
   } catch (error) {
-    throw new Error(chalk.red(`Failed to Fetch Latest Version: ${error.message}`));
+    throw new Error(chalk.red(`Failed to fetch latest version: ${error.message}`));
   }
 };
 
@@ -215,7 +219,7 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
         const filePath = path.join(outputFolder, entry.path);
         entry.pipe(fs.createWriteStream(filePath)).on("finish", () => {
           if (downloadedSize === binaryInfo.binaryByteSize) {
-            console.log(chalk.green("\nDownload completed."));
+            console.log(chalk.green("Download completed."));
           }
         });
       });
