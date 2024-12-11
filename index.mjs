@@ -1,19 +1,12 @@
 #!/usr/bin/env node
 
-// Módulos nativos
-import crypto from "crypto";
-import fs from "fs";
-import path from "path";
-import unzip from "unzip-stream";
-
-// Bibliotecas de terceros
 import axios from "axios";
 import chalk from "chalk";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
+import unzip from "unzip-stream";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
-// Constantes de configuración
 const AUTH_KEY = "9u7qab84rpc16gvk";
 const BASE_URL = "https://neofussvr.sslcs.cdngc.net";
 const DOWNLOAD_URL = "http://cloud-neofussvr.samsungmobile.com";
@@ -21,11 +14,8 @@ const NONCE_KEY = "vicopx7dqu06emacgpnpy8j8zwhduwlh";
 const USER_AGENT = "Kies2.0_FUS";
 const VERSION_XML_URL = "http://fota-cloud-dn.ospserver.net/firmware";
 
-// Crear instancias de parsers
 const parser = new XMLBuilder({});
 const xmlParser = new XMLParser();
-
-// Funciones utilitarias
 
 const decryptNonce = (nonceEncrypted) => {
   const nonceDecipher = crypto.createDecipheriv(
@@ -76,8 +66,6 @@ const updateHeaders = (responseHeaders, headers, nonceState) => {
   if (sessionID) headers.Cookie = sessionID;
 };
 
-// Funciones de construcción de mensajes
-
 const buildXMLMsg = (msgType, data) => {
   return parser.build({
     FUSMsg: {
@@ -114,8 +102,6 @@ const getLogicCheck = (input, nonce) => Array.from(nonce)
   .map((char) => input[char.charCodeAt(0) & 0xf])
   .join("");
 
-// Funciones de parsing
-
 const parseBinaryInfo = (data) => {
   const parsedInfo = xmlParser.parse(data);
   const binaryInfo = {
@@ -149,8 +135,6 @@ const getDecryptionKey = (version, logicalValue) =>
   crypto.createHash("md5")
     .update(getLogicCheck(version, logicalValue))
     .digest();
-
-// Funciones principales
 
 const getLatestFirmwareVersion = async (region, model) => {
   try {
@@ -241,7 +225,6 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
   }
 };
 
-// Configuración de los argumentos de la línea de comandos
 const { argv } = yargs(hideBin(process.argv))
   .option("model", {
     alias: "m",
@@ -263,7 +246,6 @@ const { argv } = yargs(hideBin(process.argv))
   })
   .help();
 
-// Ejecución principal
 (async () => {
   try {
     const latestFirmware = await getLatestFirmwareVersion(argv.region, argv.model);
