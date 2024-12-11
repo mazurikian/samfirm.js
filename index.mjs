@@ -256,20 +256,20 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
     res.data
       .on("data", (buffer) => {
         downloadedSize += buffer.length;
-        const downloadedMB = (downloadedSize / (1024 * 1024)).toFixed(2);
-        const totalSizeInMB = (
+        const downloadedGB = (downloadedSize / (1024 * 1024 * 1024)).toFixed(2);
+        const totalSizeInGB = (
           binaryInfo.binaryByteSize /
-          (1024 * 1024)
+          (1024 * 1024 * 1024)
         ).toFixed(2);
         const progress = (
-          (downloadedSize / (1024 * 1024) / totalSizeInMB) *
+          (downloadedSize / (1024 * 1024 * 1024) / totalSizeInGB) *
           100
         ).toFixed(2);
 
         if (progress !== lastProgress) {
           process.stdout.write(
             chalk.cyan(
-              `Downloading ${downloadedMB} MB of ${totalSizeInMB} MB - ${progress}%\r`,
+              `Downloading ${downloadedMB} GB of ${totalSizeInMB} GB - ${progress}%\r`,
             ),
           );
           lastProgress = progress;
