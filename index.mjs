@@ -125,13 +125,13 @@ const getLogicCheck = (input, nonce) =>
 const parseBinaryInfo = (data) => {
   const parsedInfo = xmlParser.parse(data);
   const binaryInfo = {
-    binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data || 'N/A',
-    binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data || 'N/A',
-    binaryFilename: parsedInfo.FUSMsg.FUSBody.Put.BINARY_NAME.Data || 'N/A',
-    binaryLogicValue: parsedInfo.FUSMsg.FUSBody.Put.LOGIC_VALUE_FACTORY.Data || 'N/A',
-    binaryModelPath: parsedInfo.FUSMsg.FUSBody.Put.MODEL_PATH.Data || 'N/A',
-    binaryOSVersion: parsedInfo.FUSMsg.FUSBody.Put.CURRENT_OS_VERSION.Data || 'N/A',
-    binaryVersion: parsedInfo.FUSMsg.FUSBody.Results.LATEST_FW_VERSION.Data || 'N/A'
+    binaryByteSize: parsedInfo.FUSMsg.FUSBody.Put.BINARY_BYTE_SIZE.Data || "N/A",
+    binaryDescription: parsedInfo.FUSMsg.FUSBody.Put.DESCRIPTION.Data || "N/A",
+    binaryFilename: parsedInfo.FUSMsg.FUSBody.Put.BINARY_NAME.Data || "N/A",
+    binaryLogicValue: parsedInfo.FUSMsg.FUSBody.Put.LOGIC_VALUE_FACTORY.Data || "N/A",
+    binaryModelPath: parsedInfo.FUSMsg.FUSBody.Put.MODEL_PATH.Data || "N/A",
+    binaryOSVersion: parsedInfo.FUSMsg.FUSBody.Put.CURRENT_OS_VERSION.Data || "N/A",
+    binaryVersion: parsedInfo.FUSMsg.FUSBody.Results.LATEST_FW_VERSION.Data || "N/A"
   };
 
   console.log(chalk.blue(`Binary Size: ${binaryInfo.binaryByteSize} bytes`));
