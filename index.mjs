@@ -89,22 +89,26 @@ const buildXMLMsg = (msgType, data) => {
   });
 };
 
-const getBinaryInitMsg = (filename, nonce) => buildXMLMsg("init", {
-  BINARY_FILE_NAME: { Data: filename },
-  LOGIC_CHECK: { Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce) }
-});
-
-const getBinaryInformMsg = (version, region, model, imei, nonce) => buildXMLMsg("inform", {
-  ACCESS_MODE: { Data: 2 },
-  BINARY_NATURE: { Data: 1 },
-  CLIENT_PRODUCT: { Data: "Smart Switch" },
-  CLIENT_VERSION: { Data: "4.3.24062_1" },
-  DEVICE_IMEI_PUSH: { Data: imei },
-  DEVICE_FW_VERSION: { Data: version },
-  DEVICE_LOCAL_CODE: { Data: region },
-  DEVICE_MODEL_NAME: { Data: model },
-  LOGIC_CHECK: { Data: getLogicCheck(version, nonce) }
-});
+const getBinaryMsg = (type, data, nonce) => {
+  if (type === 'init') {
+    return buildXMLMsg(type, {
+      BINARY_FILE_NAME: { Data: data },
+      LOGIC_CHECK: { Data: getLogicCheck(data.split(".")[0].slice(-16), nonce) }
+    });
+  } else if (type === 'inform') {
+    return buildXMLMsg(type, {
+      ACCESS_MODE: { Data: 2 },
+      BINARY_NATURE: { Data: 1 },
+      CLIENT_PRODUCT: { Data: "Smart Switch" },
+      CLIENT_VERSION: { Data: "4.3.24062_1" },
+      DEVICE_IMEI_PUSH: { Data: data.imei },
+      DEVICE_FW_VERSION: { Data: data.version },
+      DEVICE_LOCAL_CODE: { Data: data.region },
+      DEVICE_MODEL_NAME: { Data: data.model },
+      LOGIC_CHECK: { Data: getLogicCheck(data.version, nonce) }
+    });
+  }
+};
 
 const getLogicCheck = (input, nonce) => Array.from(nonce)
   .map((char) => input[char.charCodeAt(0) & 0xf])
@@ -175,7 +179,7 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
     updateHeaders(nonceResponse.headers, headers, nonceState);
 
     console.log(chalk.yellow("Fetching binary info..."));
-    const binaryInfoResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonceState.decrypted), {
+    const binaryInfoResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInform.do`, getBinaryMsg('inform', { imei, version: `${pda}/${csc}/${modem}/${pda}`, region, model }, nonceState.decrypted), {
       headers: {
         ...headers,
         Accept: "application/xml",
@@ -188,7 +192,7 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
     const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
     console.log(chalk.green("Initializing binary download..."));
-    const initResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonceState.decrypted), {
+    const initResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInitForMass.do`, getBinaryMsg('init', binaryInfo.binaryFilename, nonceState.decrypted), {
       headers: {
         ...headers,
         Accept: "application/xml",
