@@ -269,7 +269,7 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
         if (progress !== lastProgress) {
           process.stdout.write(
             chalk.cyan(
-              `Downloading ${downloadedMB} GB of ${totalSizeInMB} GB - ${progress}%\r`,
+              `Downloading ${downloadedGB} GB of ${totalSizeInGB} GB - ${progress}%\r`,
             ),
           );
           lastProgress = progress;
