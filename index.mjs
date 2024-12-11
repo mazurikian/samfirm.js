@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
+import unzip from "unzip-stream";
 import axios from "axios";
 import chalk from "chalk";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
-import unzip from "unzip-stream";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
