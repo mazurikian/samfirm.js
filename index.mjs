@@ -1,127 +1,117 @@
 #!/usr/bin/env node
 
-// Importaciones
+// Módulos nativos
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import unzip from "unzip-stream";
+
+// Bibliotecas de terceros
 import axios from "axios";
 import chalk from "chalk";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
-import unzip from "unzip-stream";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
-// Constantes globales
+// Constantes de configuración
 const AUTH_KEY = "9u7qab84rpc16gvk";
+const BASE_URL = "https://neofussvr.sslcs.cdngc.net";
+const DOWNLOAD_URL = "http://cloud-neofussvr.samsungmobile.com";
 const NONCE_KEY = "vicopx7dqu06emacgpnpy8j8zwhduwlh";
+const USER_AGENT = "Kies2.0_FUS";
+const VERSION_XML_URL = "http://fota-cloud-dn.ospserver.net/firmware";
 
-// Instancias de XMLParser
+// Crear instancias de parsers
 const parser = new XMLBuilder({});
 const xmlParser = new XMLParser();
 
-// Funciones auxiliares
+// Funciones utilitarias
 
-// 1. Función de desencriptación del nonce
 const decryptNonce = (nonceEncrypted) => {
   const nonceDecipher = crypto.createDecipheriv(
     "aes-256-cbc",
     NONCE_KEY,
     NONCE_KEY.slice(0, 16)
   );
-  return Buffer.concat([
-    nonceDecipher.update(nonceEncrypted, "base64"),
-    nonceDecipher.final()
-  ]).toString("utf-8");
+  return nonceDecipher.update(nonceEncrypted, "base64", "utf-8") + nonceDecipher.final("utf-8");
 };
 
-// 2. Función para generar la autorización (FUS)
 const getAuthorization = (nonceDecrypted) => {
-  const key = Array.from({ length: 16 }, (_, i) =>
+  const key = Array.from({ length: 16 }, (_, i) => 
     NONCE_KEY[nonceDecrypted.charCodeAt(i) % 16]
-  ).join("") + AUTH_KEY;
+  ).join('') + AUTH_KEY;
 
   const authCipher = crypto.createCipheriv(
     "aes-256-cbc",
     key,
     key.slice(0, 16)
   );
-  return Buffer.concat([
-    authCipher.update(nonceDecrypted, "utf8"),
-    authCipher.final()
-  ]).toString("base64");
+  
+  return authCipher.update(nonceDecrypted, "utf8", "base64") + authCipher.final("base64");
 };
 
-// 3. Función para manejar la rotación de nonce
-const handleAuthRotation = (responseHeaders) => {
-  const { nonce } = responseHeaders;
-  const nonceDecrypted = decryptNonce(nonce);
+const handleAuthRotation = (nonceEncrypted) => {
+  const nonceDecrypted = decryptNonce(nonceEncrypted);
   return {
-    Authorization: `FUS nonce="${nonce}", signature="${getAuthorization(nonceDecrypted)}", nc="", type="", realm="", newauth="1"`,
-    nonce: { decrypted: nonceDecrypted, encrypted: nonce }
+    Authorization: `FUS nonce="${nonceEncrypted}", signature="${getAuthorization(nonceDecrypted)}", nc="", type="", realm="", newauth="1"`,
+    nonceDecrypted,
+    nonceEncrypted
   };
 };
 
-// 4. Función para actualizar los encabezados con la nueva autorización y nonce
+const extractSessionIDFromCookies = (cookies) => {
+  return cookies?.find(cookie => cookie.startsWith("JSESSIONID"))?.split(";")[0] || null;
+};
+
 const updateHeaders = (responseHeaders, headers, nonceState) => {
-  if (responseHeaders.nonce) {
-    const { Authorization, nonce: newNonce } = handleAuthRotation(responseHeaders);
-    Object.assign(nonceState, newNonce);
+  const { nonce } = responseHeaders;
+  if (nonce) {
+    const { Authorization, nonceDecrypted, nonceEncrypted } = handleAuthRotation(nonce);
+    nonceState.decrypted = nonceDecrypted;
+    nonceState.encrypted = nonceEncrypted;
     headers.Authorization = Authorization;
   }
 
-  const cookies = responseHeaders["set-cookie"];
-  if (Array.isArray(cookies)) {
-    const sessionID = cookies
-      .find((cookie) => cookie.startsWith("JSESSIONID"))
-      ?.split(";")[0];
-    if (sessionID) headers.Cookie = sessionID;
-  }
+  const sessionID = extractSessionIDFromCookies(responseHeaders["set-cookie"]);
+  if (sessionID) headers.Cookie = sessionID;
 };
 
-// 5. Función para construir el mensaje XML para la inicialización del binario
-const getBinaryInitMsg = (filename, nonce) =>
-  parser.build({
+// Funciones de construcción de mensajes
+
+const buildXMLMsg = (msgType, data) => {
+  return parser.build({
     FUSMsg: {
       FUSHdr: { ProtoVer: "1.0" },
       FUSBody: {
-        Put: {
-          BINARY_FILE_NAME: { Data: filename },
-          LOGIC_CHECK: {
-            Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce)
-          }
-        }
+        Put: { ...data }
       }
     }
   });
+};
 
-// 6. Función para construir el mensaje XML de información binaria
-const getBinaryInformMsg = (version, region, model, imei, nonce) =>
-  parser.build({
-    FUSMsg: {
-      FUSHdr: { ProtoVer: "1.0" },
-      FUSBody: {
-        Put: {
-          ACCESS_MODE: { Data: 2 },
-          BINARY_NATURE: { Data: 1 },
-          CLIENT_PRODUCT: { Data: "Smart Switch" },
-          CLIENT_VERSION: { Data: "4.3.24062_1" },
-          DEVICE_IMEI_PUSH: { Data: imei },
-          DEVICE_FW_VERSION: { Data: version },
-          DEVICE_LOCAL_CODE: { Data: region },
-          DEVICE_MODEL_NAME: { Data: model },
-          LOGIC_CHECK: { Data: getLogicCheck(version, nonce) }
-        }
-      }
-    }
-  });
+const getBinaryInitMsg = (filename, nonce) => buildXMLMsg("init", {
+  BINARY_FILE_NAME: { Data: filename },
+  LOGIC_CHECK: { Data: getLogicCheck(filename.split(".")[0].slice(-16), nonce) }
+});
 
-// 7. Función para calcular el valor lógico para la verificación del mensaje
-const getLogicCheck = (input, nonce) =>
-  Array.from(nonce)
-    .map((char) => input[char.charCodeAt(0) & 0xf])
-    .join("");
+const getBinaryInformMsg = (version, region, model, imei, nonce) => buildXMLMsg("inform", {
+  ACCESS_MODE: { Data: 2 },
+  BINARY_NATURE: { Data: 1 },
+  CLIENT_PRODUCT: { Data: "Smart Switch" },
+  CLIENT_VERSION: { Data: "4.3.24062_1" },
+  DEVICE_IMEI_PUSH: { Data: imei },
+  DEVICE_FW_VERSION: { Data: version },
+  DEVICE_LOCAL_CODE: { Data: region },
+  DEVICE_MODEL_NAME: { Data: model },
+  LOGIC_CHECK: { Data: getLogicCheck(version, nonce) }
+});
 
-// 8. Función para parsear la información binaria desde el XML
+const getLogicCheck = (input, nonce) => Array.from(nonce)
+  .map((char) => input[char.charCodeAt(0) & 0xf])
+  .join("");
+
+// Funciones de parsing
+
 const parseBinaryInfo = (data) => {
   const parsedInfo = xmlParser.parse(data);
   const binaryInfo = {
@@ -145,111 +135,73 @@ const parseBinaryInfo = (data) => {
   return binaryInfo;
 };
 
-// 9. Función para parsear la versión más reciente del firmware
 const parseLatestFirmwareVersion = (data) => {
   const parsedData = xmlParser.parse(data);
-  const [pda, csc, modem] =
-    parsedData.versioninfo.firmware.version.latest.split("/");
+  const [pda, csc, modem] = parsedData.versioninfo.firmware.version.latest.split("/");
   return { pda, csc, modem: modem || "N/A" };
 };
 
-// 10. Función para obtener la clave de desencriptado
 const getDecryptionKey = (version, logicalValue) =>
-  crypto
-    .createHash("md5")
+  crypto.createHash("md5")
     .update(getLogicCheck(version, logicalValue))
     .digest();
 
-// Función para obtener la última versión del firmware
+// Funciones principales
+
 const getLatestFirmwareVersion = async (region, model) => {
   try {
     console.log(chalk.yellow("Fetching latest firmware version..."));
-    const response = await axios.get(
-      `http://fota-cloud-dn.ospserver.net/firmware/${region}/${model}/version.xml`
-    );
+    const response = await axios.get(`${VERSION_XML_URL}/${region}/${model}/version.xml`);
     return parseLatestFirmwareVersion(response.data);
   } catch (error) {
-    throw new Error(
-      chalk.red(`Failed to Fetch Latest Version: ${error.message}`)
-    );
+    throw new Error(chalk.red(`Failed to Fetch Latest Version: ${error.message}`));
   }
 };
 
-// Función para descargar el firmware
 const downloadFirmware = async (model, region, imei, latestFirmware) => {
   const { pda, csc, modem } = latestFirmware;
   const nonceState = { encrypted: "", decrypted: "" };
-  const headers = { "User-Agent": "Kies2.0_FUS" };
+  const headers = { "User-Agent": USER_AGENT };
 
   try {
     console.log(chalk.green("Fetching nonce..."));
-    const nonceResponse = await axios.post(
-      "https://neofussvr.sslcs.cdngc.net/NF_DownloadGenerateNonce.do",
-      "",
-      {
-        headers: {
-          Authorization:
-            'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
-          "User-Agent": "Kies2.0_FUS",
-          Accept: "application/xml"
-        }
+    const nonceResponse = await axios.post(`${BASE_URL}/NF_DownloadGenerateNonce.do`, "", {
+      headers: {
+        Authorization: 'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
+        "User-Agent": USER_AGENT,
+        Accept: "application/xml"
       }
-    );
+    });
     updateHeaders(nonceResponse.headers, headers, nonceState);
 
     console.log(chalk.yellow("Fetching binary info..."));
-    const binaryInfoResponse = await axios.post(
-      "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do",
-      getBinaryInformMsg(
-        `${pda}/${csc}/${modem}/${pda}`,
-        region,
-        model,
-        imei,
-        nonceState.decrypted
-      ),
-      {
-        headers: {
-          ...headers,
-          Accept: "application/xml",
-          "Content-Type": "application/xml"
-        }
+    const binaryInfoResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInform.do`, getBinaryInformMsg(`${pda}/${csc}/${modem}/${pda}`, region, model, imei, nonceState.decrypted), {
+      headers: {
+        ...headers,
+        Accept: "application/xml",
+        "Content-Type": "application/xml"
       }
-    );
+    });
     updateHeaders(binaryInfoResponse.headers, headers, nonceState);
 
     const binaryInfo = parseBinaryInfo(binaryInfoResponse.data);
-
-    const decryptionKey = getDecryptionKey(
-      binaryInfo.binaryVersion,
-      binaryInfo.binaryLogicValue
-    );
+    const decryptionKey = getDecryptionKey(binaryInfo.binaryVersion, binaryInfo.binaryLogicValue);
 
     console.log(chalk.green("Initializing binary download..."));
-    const initResponse = await axios.post(
-      "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do",
-      getBinaryInitMsg(binaryInfo.binaryFilename, nonceState.decrypted),
-      {
-        headers: {
-          ...headers,
-          Accept: "application/xml",
-          "Content-Type": "application/xml"
-        }
+    const initResponse = await axios.post(`${BASE_URL}/NF_DownloadBinaryInitForMass.do`, getBinaryInitMsg(binaryInfo.binaryFilename, nonceState.decrypted), {
+      headers: {
+        ...headers,
+        Accept: "application/xml",
+        "Content-Type": "application/xml"
       }
-    );
+    });
     updateHeaders(initResponse.headers, headers, nonceState);
 
-    const binaryDecipher = crypto.createDecipheriv(
-      "aes-128-ecb",
-      decryptionKey,
-      null
-    );
-    const res = await axios.get(
-      `http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
-      {
-        headers,
-        responseType: "stream"
-      }
-    );
+    const binaryDecipher = crypto.createDecipheriv("aes-128-ecb", decryptionKey, null);
+    const res = await axios.get(`${DOWNLOAD_URL}/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`, {
+      headers,
+      responseType: "stream"
+    });
 
     const outputFolder = `${process.cwd()}/${model}_${region}/`;
     fs.mkdirSync(outputFolder, { recursive: true });
@@ -261,21 +213,11 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
       .on("data", (buffer) => {
         downloadedSize += buffer.length;
         const downloadedMB = (downloadedSize / (1024 * 1024)).toFixed(2);
-        const totalSizeInMB = (
-          binaryInfo.binaryByteSize /
-          (1024 * 1024)
-        ).toFixed(2);
-        const progress = (
-          (downloadedSize / (1024 * 1024) / totalSizeInMB) *
-          100
-        ).toFixed(2);
+        const totalSizeInMB = (binaryInfo.binaryByteSize / (1024 * 1024)).toFixed(2);
+        const progress = ((downloadedSize / (1024 * 1024) / totalSizeInMB) * 100).toFixed(2);
 
         if (progress !== lastProgress) {
-          process.stdout.write(
-            chalk.cyan(
-              `Downloading ${downloadedMB} MB of ${totalSizeInMB} MB - ${progress}%\r`
-            )
-          );
+          process.stdout.write(chalk.cyan(`Downloading ${downloadedMB} MB of ${totalSizeInMB} MB - ${progress}%\r`));
           lastProgress = progress;
         }
       })
@@ -320,10 +262,7 @@ const { argv } = yargs(hideBin(process.argv))
 // Ejecución principal
 (async () => {
   try {
-    const latestFirmware = await getLatestFirmwareVersion(
-      argv.region,
-      argv.model
-    );
+    const latestFirmware = await getLatestFirmwareVersion(argv.region, argv.model);
     await downloadFirmware(argv.model, argv.region, argv.imei, latestFirmware);
   } catch (error) {
     console.error(chalk.red("Error:"), error.message);
