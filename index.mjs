@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import unzip from "unzip-stream";
+
 import axios from "axios";
 import chalk from "chalk";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
@@ -142,7 +146,7 @@ const getLatestFirmwareVersion = async (region, model) => {
     const response = await axios.get(`${VERSION_XML_URL}/${region}/${model}/version.xml`);
     return parseLatestFirmwareVersion(response.data);
   } catch (error) {
-    throw new Error(chalk.red(`Failed to Fetch Latest Version: ${error.message}`));
+    throw new Error(chalk.red(`Failed to fetch latest version: ${error.message}`));
   }
 };
 
