@@ -38,13 +38,11 @@ const getAuthorization = (nonceDecrypted) => {
       { length: 16 },
       (_, i) => NONCE_KEY[nonceDecrypted.charCodeAt(i) % 16],
     ).join("") + AUTH_KEY;
-
   const authCipher = crypto.createCipheriv(
     "aes-256-cbc",
     key,
     key.slice(0, 16),
   );
-
   return (
     authCipher.update(nonceDecrypted, "utf8", "base64") +
     authCipher.final("base64")
@@ -162,17 +160,11 @@ const getDecryptionKey = (version, logicalValue) =>
     .digest();
 
 const getLatestFirmwareVersion = async (region, model) => {
-  try {
-    console.log(chalk.yellow("Fetching latest firmware version..."));
-    const response = await axios.get(
-      `${VERSION_XML_URL}/${region}/${model}/version.xml`,
-    );
-    return parseLatestFirmwareVersion(response.data);
-  } catch (error) {
-    throw new Error(
-      chalk.red(`Failed to fetch latest version: ${error.message}`),
-    );
-  }
+  console.log(chalk.yellow("Fetching latest firmware version..."));
+  const response = await axios.get(
+    `${VERSION_XML_URL}/${region}/${model}/version.xml`,
+  );
+  return parseLatestFirmwareVersion(response.data);
 };
 
 const downloadFirmware = async (model, region, imei, latestFirmware) => {
@@ -180,115 +172,110 @@ const downloadFirmware = async (model, region, imei, latestFirmware) => {
   const nonceState = { encrypted: "", decrypted: "" };
   const headers = { "User-Agent": USER_AGENT };
 
-  try {
-    console.log(chalk.green("Fetching nonce..."));
-    const nonceResponse = await axios.post(
-      `${BASE_URL}/NF_DownloadGenerateNonce.do`,
-      "",
-      {
-        headers: {
-          Authorization:
-            'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
-          "User-Agent": USER_AGENT,
-          Accept: "application/xml",
-        },
+  console.log(chalk.green("Fetching nonce..."));
+  const nonceResponse = await axios.post(
+    `${BASE_URL}/NF_DownloadGenerateNonce.do`,
+    "",
+    {
+      headers: {
+        Authorization:
+          'FUS nonce="", signature="", nc="", type="", realm="", newauth="1"',
+        "User-Agent": USER_AGENT,
+        Accept: "application/xml",
       },
-    );
-    updateHeaders(nonceResponse.headers, headers, nonceState);
+    },
+  );
+  updateHeaders(nonceResponse.headers, headers, nonceState);
 
-    console.log(chalk.yellow("Fetching binary info..."));
-    const binaryInfoResponse = await axios.post(
-      `${BASE_URL}/NF_DownloadBinaryInform.do`,
-      getBinaryMsg(
-        "inform",
-        { imei, version: `${pda}/${csc}/${modem}/${pda}`, region, model },
-        nonceState.decrypted,
-      ),
-      {
-        headers: {
-          ...headers,
-          Accept: "application/xml",
-          "Content-Type": "application/xml",
-        },
+  console.log(chalk.yellow("Fetching binary info..."));
+  const binaryInfoResponse = await axios.post(
+    `${BASE_URL}/NF_DownloadBinaryInform.do`,
+    getBinaryMsg(
+      "inform",
+      { imei, version: `${pda}/${csc}/${modem}/${pda}`, region, model },
+      nonceState.decrypted,
+    ),
+    {
+      headers: {
+        ...headers,
+        Accept: "application/xml",
+        "Content-Type": "application/xml",
       },
-    );
-    updateHeaders(binaryInfoResponse.headers, headers, nonceState);
+    },
+  );
+  updateHeaders(binaryInfoResponse.headers, headers, nonceState);
 
-    const binaryInfo = parseBinaryInfo(binaryInfoResponse.data);
-    const decryptionKey = getDecryptionKey(
-      binaryInfo.binaryVersion,
-      binaryInfo.binaryLogicValue,
-    );
+  const binaryInfo = parseBinaryInfo(binaryInfoResponse.data);
+  const decryptionKey = getDecryptionKey(
+    binaryInfo.binaryVersion,
+    binaryInfo.binaryLogicValue,
+  );
 
-    console.log(chalk.green("Initializing binary download..."));
-    const initResponse = await axios.post(
-      `${BASE_URL}/NF_DownloadBinaryInitForMass.do`,
-      getBinaryMsg("init", binaryInfo.binaryFilename, nonceState.decrypted),
-      {
-        headers: {
-          ...headers,
-          Accept: "application/xml",
-          "Content-Type": "application/xml",
-        },
+  console.log(chalk.green("Initializing binary download..."));
+  const initResponse = await axios.post(
+    `${BASE_URL}/NF_DownloadBinaryInitForMass.do`,
+    getBinaryMsg("init", binaryInfo.binaryFilename, nonceState.decrypted),
+    {
+      headers: {
+        ...headers,
+        Accept: "application/xml",
+        "Content-Type": "application/xml",
       },
-    );
-    updateHeaders(initResponse.headers, headers, nonceState);
+    },
+  );
+  updateHeaders(initResponse.headers, headers, nonceState);
 
-    const binaryDecipher = crypto.createDecipheriv(
-      "aes-128-ecb",
-      decryptionKey,
-      null,
-    );
-    const res = await axios.get(
-      `${DOWNLOAD_URL}/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
-      {
-        headers,
-        responseType: "stream",
-      },
-    );
+  const binaryDecipher = crypto.createDecipheriv(
+    "aes-128-ecb",
+    decryptionKey,
+    null,
+  );
+  const res = await axios.get(
+    `${DOWNLOAD_URL}/NF_DownloadBinaryForMass.do?file=${binaryInfo.binaryModelPath}${binaryInfo.binaryFilename}`,
+    {
+      headers,
+      responseType: "stream",
+    },
+  );
 
-    const outputFolder = `${process.cwd()}/${model}_${region}/`;
-    fs.mkdirSync(outputFolder, { recursive: true });
+  const outputFolder = `${process.cwd()}/${model}_${region}/`;
+  fs.mkdirSync(outputFolder, { recursive: true });
 
-    let downloadedSize = 0;
-    let lastProgress = 0;
+  let downloadedSize = 0;
+  let lastProgress = 0;
 
-    res.data
-      .on("data", (buffer) => {
-        downloadedSize += buffer.length;
-        const downloadedGB = (downloadedSize / (1024 * 1024 * 1024)).toFixed(2);
-        const totalSizeInGB = (
-          binaryInfo.binaryByteSize /
-          (1024 * 1024 * 1024)
-        ).toFixed(2);
-        const progress = (
-          (downloadedSize / (1024 * 1024 * 1024) / totalSizeInGB) *
-          100
-        ).toFixed(2);
+  res.data
+    .on("data", (buffer) => {
+      downloadedSize += buffer.length;
+      const downloadedGB = (downloadedSize / (1024 * 1024 * 1024)).toFixed(2);
+      const totalSizeInGB = (
+        binaryInfo.binaryByteSize /
+        (1024 * 1024 * 1024)
+      ).toFixed(2);
+      const progress = (
+        (downloadedSize / (1024 * 1024 * 1024) / totalSizeInGB) *
+        100
+      ).toFixed(2);
 
-        if (progress !== lastProgress) {
-          process.stdout.write(
-            chalk.cyan(
-              `Downloading ${downloadedGB} GB of ${totalSizeInGB} GB = ${progress}%\r`,
-            ),
-          );
-          lastProgress = progress;
+      if (progress !== lastProgress) {
+        process.stdout.write(
+          chalk.cyan(
+            `Downloading ${downloadedGB} GB of ${totalSizeInGB} GB = ${progress}%\r`,
+          ),
+        );
+        lastProgress = progress;
+      }
+    })
+    .pipe(binaryDecipher)
+    .pipe(unzip.Parse())
+    .on("entry", (entry) => {
+      const filePath = path.join(outputFolder, entry.path);
+      entry.pipe(fs.createWriteStream(filePath)).on("finish", () => {
+        if (downloadedSize === binaryInfo.binaryByteSize) {
+          console.log(chalk.green("Download completed."));
         }
-      })
-      .pipe(binaryDecipher)
-      .pipe(unzip.Parse())
-      .on("entry", (entry) => {
-        const filePath = path.join(outputFolder, entry.path);
-        entry.pipe(fs.createWriteStream(filePath)).on("finish", () => {
-          if (downloadedSize === binaryInfo.binaryByteSize) {
-            console.log(chalk.green("Download completed."));
-          }
-        });
       });
-  } catch (error) {
-    console.error(chalk.red("Error:"), error.message);
-    process.exit(1);
-  }
+    });
 };
 
 const { argv } = yargs(hideBin(process.argv))
@@ -320,7 +307,6 @@ const { argv } = yargs(hideBin(process.argv))
     );
     await downloadFirmware(argv.model, argv.region, argv.imei, latestFirmware);
   } catch (error) {
-    console.error(chalk.red("Error:"), error.message);
-    process.exit(1);
+    throw new Error("An error occurred during the process: " + error.message);
   }
 })();
